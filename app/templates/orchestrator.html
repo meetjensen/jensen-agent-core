@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Jensen Core — Orchestrator UI (v0)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 24px;
+      background: #f5f5f7;
+      color: #111;
+    }
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.1fr 1.2fr;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    textarea, input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 8px;
+      border: 1px solid #d0d7de;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+    }
+    textarea {
+      min-height: 120px;
+    }
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      border: none;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #111827;
+      color: #f9fafb;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.25);
+    }
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+      box-shadow: none;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .pill.ok { background: #dcfce7; color: #166534; }
+    .pill.pending { background: #fef9c3; color: #854d0e; }
+    .pill.error { background: #fee2e2; color: #991b1b; }
+    .muted {
+      color: #6b7280;
+      font-size: 12px;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      background: #0b1120;
+      color: #e5e7eb;
+      padding: 10px 12px;
+      border-radius: 8px;
+      overflow: auto;
+      max-height: 320px;
+      white-space: pre;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 12px;
+    }
+    th, td {
+      padding: 4px 6px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+    }
+    tr:hover {
+      background: #f3f4f6;
+    }
+    .run-row {
+      cursor: pointer;
+    }
+    .run-row.selected {
+      background: #e0f2fe !important;
+    }
+    .topbar {
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <h1>Jensen Core — Orchestrator UI (v0)</h1>
+      <div class="muted">Use this page to create Orchestrator runs and inspect their tasks/events.</div>
+    </div>
+    <div class="muted">
+      Core OS &mdash; app version: <span id="app-version">{{ app_version }}</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Left: Create run + recent runs -->
+    <div class="card">
+      <h2>1. Start a new Orchestrator run</h2>
+      <label for="intent">Operator intent / notes</label>
+      <textarea id="intent" placeholder="Describe what you want the Orchestrator to do..."></textarea>
+
+      <div class="row">
+        <div style="flex: 1%;">
+          <label for="label">Run label (optional)</label>
+          <input id="label" type="text" placeholder="Core OS run from UI" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 12px;">
+        <button id="btn-start-run">
+          ▶ Start Orchestrator run
+        </button>
+        <span id="run-status" class="muted"></span>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <div class="muted">
+          Workspace: <code>Core Orchestrator Workspace</code> (category: <code>ui</code>)
+        </div>
+      </div>
+
+      <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+      <h2>2. Recent runs</h2>
+      <div class="row">
+        <button id="btn-refresh-runs" class="secondary">↻ Refresh runs</button>
+        <span id="runs-status" class="muted"></span>
+      </div>
+      <div style="margin-top: 8px; max-height: 220px; overflow: auto;">
+        <table id="runs-table">
+          <thead>
+            <tr>
+              <th>Run ID</th>
+              <th>Label</th>
+              <th>Kind</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Filled by JS -->
+          </tbody>
+        </table>
+      </div>
+      <div class="muted" style="margin-top: 4px;">
+        Click a row to select a run and load its debug view.
+      </div>
+    </div>
+
+    <!-- Right: Debug view for selected run -->
+    <div class="card">
+      <h2>3. Run debug (run + tasks + events)</h2>
+      <div class="row">
+        <span class="muted">Selected run:</span>
+        <span id="selected-run-id" class="mono" style="background:#f3f4f6;color:#111827;padding:2px 6px;border-radius:4px;max-width:420px;overflow:hidden;text-overflow:ellipsis;"></span>
+      </div>
+      <div class="row" style="margin-top: 8px;">
+        <button id="btn-load-debug" class="secondary">⬇ Load debug</button>
+        <span id="debug-status" class="muted"></span>
+      </div>
+
+      <h3 style="margin-top: 12px;">JSON debug payload</h3>
+      <div id="debug-json" class="mono">{}</div>
+    </div>
+  </div>
+
+  <script>
+    const runsTableBody = document.querySelector("#runs-table tbody");
+    const runStatusEl = document.getElementById("run-status");
+    const runsStatusEl = document.getElementById("runs-status");
+    const debugStatusEl = document.getElementById("debug-status");
+    const debugJsonEl = document.getElementById("debug-json");
+    const selectedRunIdEl = document.getElementById("selected-run-id");
+
+    let selectedRunId = null;
+
+    function setSelectedRunId(id) {
+      selectedRunId = id || null;
+      selectedRunIdEl.textContent = selectedRunId || "(none)";
+
+      // Highlight row
+      document.querySelectorAll(".run-row").forEach(tr => {
+        if (tr.dataset.runId === selectedRunId) {
+          tr.classList.add("selected");
+        } else {
+          tr.classList.remove("selected");
+        }
+      });
+    }
+
+    async function createRun() {
+      const intent = document.getElementById("intent").value.trim();
+      const labelInput = document.getElementById("label").value.trim();
+
+      if (!intent) {
+        runStatusEl.textContent = "Please enter an intent first.";
+        return;
+      }
+
+      const label = labelInput || (intent.length > 60 ? intent.slice(0, 57) + "..." : intent);
+
+      runStatusEl.textContent = "Creating run...";
+      debugStatusEl.textContent = "";
+      try {
+        const resp = await fetch("/internal/core/orchestrator/run", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "operator_request",
+            label: label,
+            notes: intent,
+            workspace_name: "Core Orchestrator Workspace",
+            workspace_category: "ui"
+          })
+        });
+        if (!resp.ok) {
+          const txt = await resp.text();
+          runStatusEl.textContent = "Error from /run: " + resp.status + " " + txt;
+          return;
+        }
+        const data = await resp.json();
+        const runId = data.run_id;
+        runStatusEl.textContent = "Run created. ID: " + runId;
+        setSelectedRunId(runId);
+        await refreshRuns();
+      } catch (e) {
+        runStatusEl.textContent = "Network or server error when creating run: " + e;
+      }
+    }
+
+    async function refreshRuns() {
+      runsStatusEl.textContent = "Loading...";
+      runsTableBody.innerHTML = "";
+      try {
+        const resp = await fetch("/internal/core/runs/debug?limit=20");
+        if (!resp.ok) {
+          const txt = await resp.text();
+          runsStatusEl.textContent = "Error from /core/runs/debug: " + resp.status + " " + txt;
+          return;
+        }
+        const list = await resp.json();
+        runsTableBody.innerHTML = "";
+        list.forEach(run => {
+          const tr = document.createElement("tr");
+          tr.className = "run-row";
+          tr.dataset.runId = run.id;
+          tr.innerHTML = `
+            <td><code>${run.id}</code></td>
+            <td>${run.label || ""}</td>
+            <td>${run.kind || ""}</td>
+            <td>${run.status || ""}</td>
+            <td>${run.created_at || ""}</td>
+          `;
+          tr.addEventListener("click", () => {
+            setSelectedRunId(run.id);
+          });
+          runsTableBody.appendChild(tr);
+        });
+        runsStatusEl.textContent = list.length ? `Loaded ${list.length} runs.` : "No runs found yet.";
+      } catch (e) {
+        runsStatusEl.textContent = "Network or server error when loading runs: " + e;
+      }
+    }
+
+    async function loadRunDebug() {
+      debugStatusEl.textContent = "";
+      debugJsonEl.textContent = "{}";
+
+      if (!selectedRunId) {
+        debugStatusEl.textContent = "Select a run first.";
+        return;
+      }
+
+      debugStatusEl.textContent = "Loading debug for run " + selectedRunId + "...";
+      try {
+        const resp = await fetch(`/internal/core/orchestrator/run/${selectedRunId}/debug`);
+        if (!resp.ok) {
+          const txt = await resp.text();
+          debugStatusEl.textContent = "Error from /run/{id}/debug: " + resp.status + " " + txt;
+          return;
+        }
+        const data = await resp.json();
+        debugJsonEl.textContent = JSON.stringify(data, null, 2);
+        debugStatusEl.textContent = "Loaded.";
+      } catch (e) {
+        debugStatusEl.textContent = "Network or server error when loading debug: " + e;
+      }
+    }
+
+    document.getElementById("btn-start-run").addEventListener("click", (e) => {
+      e.preventDefault();
+      createRun();
+    });
+
+    document.getElementById("btn-refresh-runs").addEventListener("click", (e) => {
+      e.preventDefault();
+      refreshRuns();
+    });
+
+    document.getElementById("btn-load-debug").addEventListener("click", (e) => {
+      e.preventDefault();
+      loadRunDebug();
+    });
+
+    // Initial auto-load of runs
+    refreshRuns();
+  </script>
+</body>
+</html>

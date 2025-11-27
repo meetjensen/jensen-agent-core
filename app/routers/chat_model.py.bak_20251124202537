@@ -1,0 +1,49 @@
+from fastapi import APIRouter, Request
+from pydantic import BaseModel
+import os
+from openai import OpenAI
+
+router = APIRouter()
+
+class ChatIn(BaseModel):
+    message: str | None = None
+    text: str | None = None
+    q: str | None = None
+
+def first(*xs):
+    for x in xs:
+        if x:
+            return x
+    return ""
+
+@router.post("/chat")
+async def chat_api(body: ChatIn, request: Request):
+    # accept several field names so the UI keeps working
+    user_msg = first(body.message, body.text, body.q).strip()
+
+    if not user_msg:
+        return {"reply":"Tell me something to respond to.",
+                "route":"general",
+                "summary":"Empty message"}
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        # key not loaded (container not restarted yet)
+        return {"reply":"OpenAI key not loaded yet—restart the container and try again.",
+                "route":"general",
+                "summary":f"User asked: {user_msg}"}
+
+    client = OpenAI(api_key=api_key)
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    # minimal, safe prompt
+    msgs = [
+        {"role":"system","content":"You are Jensen Agent. Be concise and helpful."},
+        {"role":"user","content": user_msg}
+    ]
+
+    # OpenAI Chat Completions (compatible with openai>=1.45)
+    res = client.chat.completions.create(model=model, messages=msgs, temperature=0.4)
+    text = res.choices[0].message.content
+
+    return {"reply": text, "route": "model", "summary": f"User asked: {user_msg}"}

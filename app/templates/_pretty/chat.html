@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Jensen Agent — Chat</title><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>:root{--bg:#0b0f14;--panel:#101826;--text:#e5e7eb;--muted:#94a3b8;--accent:#60a5fa;--border:#1f2937}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0b0f14,#0f172a);color:var(--text);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Inter,Arial}
+.wrap{max-width:980px;margin:0 auto;padding:24px}.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+h1{margin:0 0 8px}.muted{color:var(--muted)}
+textarea{width:100%;min-height:120px;background:#0b1324;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px;outline:none}
+textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(96,165,250,.15)}
+.row{display:flex;gap:10px;margin-top:10px}.btn{background:var(--accent);color:#051422;border:none;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
+input{width:100%;background:#0b1324;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+pre{background:#0b1324;border:1px solid var(--border);border-radius:10px;padding:12px;overflow:auto;margin-top:14px}a{color:var(--accent);text-decoration:none}
+</style></head>
+<body><div class="wrap"><div class="card"><h1>Chat</h1>
+<p class="muted">Sends a POST to <code>/chat_v15</code> with your token header.</p>
+<div class="row"><input id="url" value="/chat_v15" title="Endpoint"><input id="tok" value="jensen4254" title="X-Agent-Token"></div>
+<textarea id="msg">Hello World</textarea>
+<div class="row"><button class="btn" id="send">Send</button><button class="btn" id="ping">Quick PING</button><a href="/ui/" style="margin-left:auto">← Back</a></div>
+<pre id="out">Response will appear here…</pre></div></div>
+<script>
+const $=s=>document.querySelector(s);function show(o){$('#out').textContent=JSON.stringify(o,null,2);}
+async function call(text){const r=await fetch($('#url').value.trim(),{method:'POST',headers:{'Content-Type':'application/json','X-Agent-Token':$('#tok').value.trim()},body:JSON.stringify({message:text})});const data=await r.json();show(data);}
+$('#send').onclick=()=>call($('#msg').value.trim());$('#ping').onclick=()=>call('Say PONG');
+</script></body></html>

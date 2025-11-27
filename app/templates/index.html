@@ -1,0 +1,9 @@
+{% extends "_base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Welcome, admin</h2>
+    <p>Status: OK</p>
+    <p><a class="btn" href="/ui/chat">Open Chat</a></p>
+    <p style="color:#6b7280">Version: {{ version or "—" }}</p>
+  </div>
+{% endblock %}

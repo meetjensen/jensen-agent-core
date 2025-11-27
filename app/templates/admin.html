@@ -1,0 +1,14 @@
+{% extends "_base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Admin</h2>
+    <p>Version: {{ version or "—" }}</p>
+    <p>OpenAI API Key: {{ "present (hidden)" if key_present else "not set" }}</p>
+    <p style="color:#6b7280">Note: editing the key saves it into <code>/app/.env</code>. Restart the container to apply.</p>
+    <form method="post" action="/admin/key">
+      <input name="key" type="text" placeholder="sk-..." style="width:100%;padding:10px 12px;border:1px solid #d7dee6;border-radius:10px;margin:10px 0">
+      <button class="btn" type="submit">Save Key</button>
+      <a class="btn" href="/ui/logs" style="margin-left:8px">View Raw Logs</a>
+    </form>
+  </div>
+{% endblock %}

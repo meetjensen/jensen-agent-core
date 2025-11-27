@@ -1,0 +1,49 @@
+/* ===== /ui/ header fix: only headers that have a nav (won’t hit login) ===== */
+header:has(nav){
+  background:#fff !important;
+  border-bottom:1px solid #e6ebf2 !important;
+}
+
+/* Make the white band taller and keep brand on the left */
+header:has(nav) > div:first-child{
+  position:relative !important;
+  max-width:1200px !important;     /* room for the brand + buttons */
+  margin:0 auto !important;
+  height:156px !important;         /* ~1.5× taller than before */
+  padding:0 24px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;  /* brand left (like login) */
+  gap:24px !important;
+  overflow:visible !important;     /* prevents robot head clipping */
+}
+
+/* Brand sizing */
+header:has(nav) img.brand-logo{
+  height:72px !important; width:auto !important;
+  background:transparent !important; border-radius:0 !important;
+}
+header:has(nav) .brand-name{
+  font-size:28px !important; font-weight:800 !important; letter-spacing:.02em !important;
+  color:#2d6cdf !important;
+  margin-left:12px !important;
+}
+
+/* Center the nav and hang ~50% below the band */
+header:has(nav) nav{
+  position:absolute !important;
+  left:50% !important; transform:translateX(-50%) !important;
+  bottom:-30px !important;         /* half below the white band */
+  display:flex !important; gap:24px !important; z-index:5 !important;
+}
+
+/* Keep page content from colliding with overlapped buttons */
+main{ margin-top:140px !important; }
+
+/* Small screens: pull nav inside the band */
+@media (max-width: 900px){
+  header:has(nav) > div:first-child{ height:96px !important; }
+  header:has(nav) nav{ position:static !important; transform:none !important; bottom:auto !important; }
+  main{ margin-top:24px !important; }
+}
+/* ===== end fix ===== */

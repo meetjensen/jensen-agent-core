@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  agent:
+    container_name: jensen-agent
+    networks:
+      - jensen-net
+    build:
+      context: /volume1/JENSEN/agents/my-agent
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - /volume1/JENSEN/agents/my-agent/.env
+    volumes:
+      - /volume1/JENSEN/agents/my-agent/app:/app/app
+      - /volume1/JENSEN/agents/my-agent/.env:/app/.env
+      - /volume1/JENSEN/agents/my-agent/data:/app/data
+    restart: unless-stopped
+
+networks:
+  jensen-net:
+    external: true

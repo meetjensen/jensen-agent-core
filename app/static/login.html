@@ -1,0 +1,37 @@
+
+  <!doctype html>
+<meta charset="utf-8">
+<link rel="icon" href="/static/brand/jensen-method.png">
+<title>JENSEN — Login</title>
+<link rel="stylesheet" href="/static/theme.css?v=phase8_final">
+    <link rel="stylesheet" href="/static/final.css?v=phase8_final">
+<div class="header">
+  <div class="brand">
+    <img class="brand-logo" src="/static/brand/jensen-method.png" alt="JENSEN">
+    <span>JENSEN</span>
+  </div>
+</div>
+<div class="container">
+  <div class="card" style="max-width:420px;margin:48px auto">
+    <h2 style="margin:0 0 8px 0">Sign in</h2>
+    <p class="footer" style="margin-top:4px">Use your admin credentials</p>
+    <form id="loginForm" style="display:grid;gap:10px;margin-top:12px">
+      <label>Username</label><input id="username" value="admin" autofocus>
+      <label>Password</label><input id="password" type="password" value="ChangeMeNow!">
+      <button class="primary" type="submit">Login</button>
+    </form>
+    <p id="result" class="footer"></p>
+  </div>
+</div>
+<script>
+document.getElementById("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const res = await fetch("/auth/login", {
+    method:"POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({username:document.getElementById("username").value, password:document.getElementById("password").value})
+  });
+  if(res.ok){ document.getElementById('result').textContent="✅ Logged in — redirecting…"; setTimeout(()=>location.href="/ui/",600); }
+  else{ document.getElementById('result').textContent="❌ Login failed."; }
+};
+</script>

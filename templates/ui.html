@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Jensen Agent – Demo UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 40px; }
+    .box { max-width: 720px; margin: 0 auto; padding: 24px; border: 1px solid #ddd; border-radius: 12px; }
+    label { display:block; margin: 12px 0 4px; font-weight: 600; }
+    input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+    button { margin-top: 12px; padding: 10px 16px; font-size: 16px; border: 0; border-radius: 8px; background: #0d6efd; color: #fff; cursor: pointer; }
+    pre { background:#f7f7f7; padding:12px; border-radius:8px; white-space:pre-wrap; }
+    .row { display:flex; gap:12px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Jensen Agent – Demo UI</h2>
+    <p>Send a message to <code>/chat</code>. Your token isn’t stored on the server – it’s only sent as a header from your browser.</p>
+
+    <label for="token">X-Agent-Token</label>
+    <input id="token" type="password" placeholder="Enter your agent token (e.g., jensen4254)" />
+
+    <label for="message">Message</label>
+    <textarea id="message" rows="3" placeholder='Try: "Say hi in one line."'></textarea>
+
+    <div class="row">
+      <button id="send">Send</button>
+      <button id="clear">Clear</button>
+    </div>
+
+    <h3>Response</h3>
+    <pre id="out">—</pre>
+  </div>
+
+  <script>
+    const $ = sel => document.querySelector(sel);
+    $("#send").onclick = async () => {
+      const token = $("#token").value.trim();
+      const msg = $("#message").value.trim();
+      $("#out").textContent = "Sending…";
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Agent-Token": token
+          },
+          body: JSON.stringify({ message: msg })
+        });
+        const data = await res.json();
+        $("#out").textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        $("#out").textContent = "Error: " + e;
+      }
+    };
+    $("#clear").onclick = () => { $("#message").value = ""; $("#out").textContent = "—"; };
+  </script>
+</body>
+</html>

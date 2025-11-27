@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Jensen Agent — UI</title><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>:root{--bg:#0b0f14;--panel:#101826;--text:#e5e7eb;--muted:#94a3b8;--accent:#60a5fa;--ok:#34d399;--border:#1f2937}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0b0f14,#0f172a);color:var(--text);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Inter,Arial}
+.wrap{max-width:980px;margin:0 auto;padding:24px}.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+h1{margin:0 0 8px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+.stat{background:#0b1324;border:1px solid var(--border);border-radius:10px;padding:14px}.stat .label{font-size:12px;color:var(--muted)}.stat .val{font-weight:800;font-size:22px}
+.ok{color:var(--ok)}.nav{margin-top:16px;display:flex;gap:12px}.btn{background:var(--accent);color:#051422;border:none;border-radius:10px;padding:10px 14px;text-decoration:none;font-weight:600}
+pre{background:#0b1324;border:1px solid var(--border);border-radius:10px;padding:12px;overflow:auto}</style></head>
+<body><div class="wrap"><div class="card"><h1>Jensen Agent — UI</h1>
+<p class="muted">Welcome. Use the buttons below to open Chat or view Logs.</p>
+<div class="grid">
+  <div class="stat"><div class="label">Status</div><div class="val ok" id="st">Checking…</div></div>
+  <div class="stat"><div class="label">Version</div><div class="val" id="ver">—</div></div>
+  <div class="stat"><div class="label">Model</div><div class="val" id="model">—</div></div>
+</div>
+<div class="nav">
+  <a class="btn" href="/ui/chat">Open Chat</a>
+  <a class="btn" href="/ui/admin">Admin</a>
+  <a class="btn" href="/logs.html">Raw Logs</a>
+</div>
+<div style="margin-top:18px"><pre id="diag" class="muted"></pre></div>
+</div></div>
+<script>
+async function probe(){try{
+  const h=await fetch('/health');const hv=await h.json();document.getElementById('st').textContent=hv.ok?'Healthy':'Degraded';
+  const v=await fetch('/version');const vv=await v.json();document.getElementById('ver').textContent=vv.version||'—';document.getElementById('model').textContent=vv.model||'—';
+  document.getElementById('diag').textContent='OK';
+}catch(e){document.getElementById('st').textContent='Unreachable';document.getElementById('diag').textContent=String(e);}}
+probe();
+</script></body></html>

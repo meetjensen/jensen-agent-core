@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin · Links & Integrations</title>
+  <style>
+    :root { --fg:#111; --muted:#666; --bg:#fafafa; --card:#fff; --bd:#e4e4e7; --ok:#16a34a; --warn:#d97706; --err:#dc2626; }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+    header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--bd);padding:10px 16px;z-index:2}
+    nav a{margin-right:12px;text-decoration:none;color:#0a58ca}
+    .wrap{max-width:1120px;margin:18px auto;padding:0 16px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .card{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:14px}
+    h2{margin:4px 0 10px 0;font-size:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid var(--bd);vertical-align:top}
+    th{text-align:left;background:#f6f6f8}
+    code,kbd{background:#f3f4f6;border:1px solid var(--bd);border-radius:4px;padding:0 4px}
+    .muted{color:var(--muted)}
+    .pill{display:inline-block;padding:2px 6px;border-radius:999px;border:1px solid var(--bd);background:#f7f7fb}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+    button{cursor:pointer;border:1px solid var(--bd);background:#fff;border-radius:6px;padding:6px 10px}
+    input[type=text]{width:100%;padding:6px 8px;border:1px solid var(--bd);border-radius:6px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .right{float:right}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    .small{font-size:12px}
+    ul{margin:6px 0 0 16px}
+    .hidden{display:none}
+  </style>
+  <script>
+    // If the page is rendered with Jinja, this will be the server token. Otherwise it's the literal "{{ token }}".
+    window.INIT_TOKEN = "{{ token|default('') }}";
+  </script>
+</head>
+<body>
+<header>
+  <nav class="row">
+    <a href="/ui">Home</a>
+    <a href="/ui/chat">Chat</a>
+    <a href="/ui/admin">Admin</a>
+    <a href="/ui/logs">Raw Logs</a>
+    <a href="/ui/admin/links"><b>Links & Integrations</b></a>
+    <span class="muted small right">v<span id="ver">…</span></span>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <section class="card">
+      <h2>Operator Links</h2>
+      <div class="muted small">Source: <code>/app/data/operator_links.json</code> → <code>GET /ops/links</code></div>
+      <div id="links">Loading…</div>
+    </section>
+
+    <section class="card">
+      <h2>Integrations · Actions</h2>
+      <div class="row small">
+        <div style="min-width:220px;flex:1">
+          <label class="small muted">X-Agent-Token</label>
+          <input id="tok" type="text" class="mono" placeholder="agent token"/>
+        </div>
+        <div><button id="saveTok">Save</button></div>
+        <div class="muted small">Header sent on execute.</div>
+      </div>
+      <div id="actions" style="margin-top:8px">Loading…</div>
+      <div id="actWarn" class="warn small hidden">Integrations appear disabled. Set <code>INTEGRATIONS_ENABLED=true</code> in <code>.env</code> and rebuild.</div>
+    </section>
+
+    <section class="card" style="grid-column:1 / -1">
+      <h2>Jobs</h2>
+      <div class="muted small">Queue source: <code>/app/data/jobs.json</code> → <code>GET /ops/jobs</code></div>
+      <table id="jobsTbl"><thead><tr>
+        <th style="width:220px">Job ID</th><th>Status</th><th>Type</th><th>Target</th><th class="small">Started</th><th class="small">Ended</th>
+      </tr></thead><tbody></tbody></table>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = sel => document.querySelector(sel);
+  const $html = (el, html) => { el.innerHTML = html; };
+  const fmtTs = s => s ? new Date(s*1000).toLocaleString() : '';
+  const get = (url) => fetch(url, {credentials:'include'}).then(r => r.ok ? r.json() : Promise.reject(r));
+  const post = (url, token) => fetch(url, {
+    method: 'POST',
+    headers: {'X-Agent-Token': token || ''},
+    credentials:'include'
+  }).then(r => r.json());
+
+  // Token handling: prefer server-injected token, else localStorage, else 'jensen4254'
+  let token = (function(){
+    let t = (window.INIT_TOKEN||'').trim();
+    if (t.includes('{{')) t = ''; // not rendered (served as static HTML)
+    if (!t) t = localStorage.getItem('x_agent_token')||'';
+    if (!t) t = 'jensen4254';
+    return t;
+  })();
+  $('#tok').value = token;
+  $('#saveTok').onclick = () => {
+    token = $('#tok').value.trim();
+    localStorage.setItem('x_agent_token', token);
+  };
+
+  // Version
+  get('/version').then(v => { $('#ver').textContent = v.version || '—'; }).catch(()=>{});
+
+  // Links
+  get('/ops/links').then(data => {
+    const list = data.links || data || [];
+    if (!list.length) { $html($('#links'), '<span class="muted">No operator links.</span>'); return; }
+    $html($('#links'), '<ul>' + list.map(x => {
+      const sec = x.section ? ` <span class="muted">· ${x.section}</span>` : '';
+      return `<li><a href="${x.url}" target="_blank" rel="noopener">${x.name||x.url}</a>${sec}</li>`;
+    }).join('') + '</ul>');
+  }).catch(()=>{ $html($('#links'), '<span class="err">Failed to load /ops/links</span>'); });
+
+  // Actions
+  function loadActions(){
+    get('/integrations/actions').then(arr => {
+      if (!Array.isArray(arr) || !arr.length) {
+        $html($('#actions'), '<span class="muted">No actions found.</span>');
+        return;
+      }
+      const rows = arr.map(a => {
+        const id = a.id || '(no id)';
+        const type = a.type || '-';
+        const tgt  = a.url || a.path || '';
+        const m    = (a.method||'GET').toUpperCase();
+        const run  = () => {
+          const q = encodeURIComponent(id);
+          post(`/ops/actions/execute?id=${q}`, token)
+            .then(x => { loadJobs(); })
+            .catch(e => { alert('Execute failed'); });
+        };
+        return `<tr>
+          <td class="mono">${id}</td>
+          <td><span class="pill">${type}</span></td>
+          <td class="mono small">${m}</td>
+          <td class="mono small">${tgt}</td>
+          <td><button data-id="${id}" class="runBtn">Run</button></td>
+        </tr>`;
+      }).join('');
+      $html($('#actions'), `<table><thead><tr><th>ID</th><th>Type</th><th>Method</th><th>Target</th><th></th></tr></thead><tbody>${rows}</tbody></table>`);
+      document.querySelectorAll('.runBtn').forEach(btn=>{
+        btn.onclick = () => {
+          const id = btn.getAttribute('data-id');
+          post(`/ops/actions/execute?id=${encodeURIComponent(id)}`, token).then(()=>loadJobs());
+        };
+      });
+    }).catch(()=>{
+      $html($('#actions'), '<span class="err">Failed to load /integrations/actions</span>');
+    });
+
+    // Check INTEGRATIONS_ENABLED (best-effort)
+    fetch('/__diag/actions', {credentials:'include'}).then(r=>r.json()).then(d=>{
+      const on = (d.env && String(d.env.INTEGRATIONS_CONFIG_ENABLED||d.env.INTEGRATIONS_ENABLED||'').toLowerCase()==='true');
+      $('#actWarn').classList.toggle('hidden', on);
+    }).catch(()=>{});
+  }
+
+  // Jobs
+  function loadJobs(){
+    get('/ops/jobs').then(data => {
+      const jobs = (data.jobs||[]);
+      if (!jobs.length){ $html($('#jobsTbl tbody'), '<tr><td colspan="6" class="muted">No jobs.</td></tr>'); return; }
+      const rows = jobs.map(j=>{
+        const p = j.payload||{};
+        return `<tr>
+          <td class="mono small">${j.id}</td>
+          <td>${j.status==='done' ? '<span class="ok">done</span>' :
+                 j.status==='error' ? '<span class="err">error</span>' :
+                 j.status==='running' ? '<span class="warn">running</span>' : j.status}</td>
+          <td class="small mono">${p.type||''}</td>
+          <td class="small mono">${p.url||p.path||''}</td>
+          <td class="small">${fmtTs(j.started)}</td>
+          <td class="small">${fmtTs(j.ended)}</td>
+        </tr>`;
+      }).join('');
+      $html($('#jobsTbl tbody'), rows);
+    }).catch(()=>{
+      $html($('#jobsTbl tbody'), '<tr><td colspan="6" class="err">Failed to load /ops/jobs</td></tr>');
+    });
+  }
+
+  loadActions(); loadJobs();
+  setInterval(loadJobs, 2500);
+})();
+</script>
+</body>
+</html>

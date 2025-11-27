@@ -1,0 +1,198 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin · Links & Integrations</title>
+<style>
+:root{--fg:#111;--muted:#666;--bg:#fafafa;--card:#fff;--bd:#e4e4e7;--ok:#16a34a;--warn:#d97706;--err:#dc2626}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--bd);padding:10px 16px;z-index:2}
+nav a{margin-right:12px;text-decoration:none;color:#0a58ca}
+.wrap{max-width:1160px;margin:18px auto;padding:0 16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:14px}
+h2{margin:4px 0 10px 0;font-size:16px}
+.small{font-size:12px}.muted{color:var(--muted)}.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.pill{display:inline-block;padding:2px 6px;border-radius:999px;border:1px solid var(--bd);background:#f7f7fb}
+.ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid var(--bd);vertical-align:top} th{text-align:left;background:#f6f6f8}
+button{cursor:pointer;border:1px solid var(--bd);background:#fff;border-radius:6px;padding:6px 10px}
+input[type=text]{width:100%;padding:6px 8px;border:1px solid var(--bd);border-radius:6px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hidden{display:none}
+.toast{position:fixed;bottom:14px;right:14px;background:#111;color:#fff;padding:8px 12px;border-radius:6px;opacity:.95}
+.badge{border:1px solid var(--bd);border-radius:6px;padding:2px 6px;margin-left:6px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center}
+.modal .box{background:#fff;border-radius:10px;min-width:320px;max-width:520px;border:1px solid var(--bd);padding:16px}
+.modal .row{justify-content:flex-end}
+kbd,code{background:#f3f4f6;border:1px solid var(--bd);border-radius:4px;padding:0 4px}
+</style>
+<script>
+{% if token is defined %}window.INIT_TOKEN="{{ token }}";{% else %}window.INIT_TOKEN="";{% endif %}
+</script>
+</head><body>
+<header>
+  <nav class="row">
+    <a href="/ui">Home</a><a href="/ui/chat">Chat</a><a href="/ui/admin">Admin</a><a href="/ui/logs">Raw Logs</a>
+    <a href="/ui/admin/links"><b>Links & Integrations</b></a>
+    <span class="small muted" style="margin-left:auto">v<span id="ver">…</span>
+      <span id="intState" class="badge muted">integrations: …</span>
+    </span>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <section class="card">
+      <h2>Operator Links</h2>
+      <div class="small muted">Source: <code>/app/data/operator_links.json</code> → <code>GET /ops/links</code></div>
+      <div id="links">Loading…</div>
+    </section>
+
+    <section class="card">
+      <h2>Integrations · Actions</h2>
+      <div class="row small" style="margin-bottom:6px;gap:12px">
+        <div style="min-width:220px;flex:1">
+          <label class="small muted">X-Agent-Token</label>
+          <input id="tok" type="text" class="mono" placeholder="agent token"/>
+        </div>
+        <div class="row small" style="gap:6px">
+          <label><input type="checkbox" id="confirmChk"/> Confirm before run</label>
+          <button id="saveTok">Save</button>
+          <a id="exportAudit" class="small" href="/ops/export/audit/file" title="Download audit as NDJSON">Export Audit</a>
+        </div>
+      </div>
+      <div id="intWarn" class="warn small hidden">Set <code>INTEGRATIONS_ENABLED=true</code> in <code>.env</code> and rebuild.</div>
+      <div id="actions" style="margin-top:8px">Loading…</div>
+    </section>
+
+    <section class="card" style="grid-column:1 / -1">
+      <h2>Jobs</h2>
+      <div class="small muted">Queue: <code>/app/data/jobs.json</code> → <code>GET /ops/jobs</code></div>
+      <table id="jobsTbl"><thead><tr>
+        <th style="width:240px">Job ID</th><th>Status</th><th>Type</th><th>Target</th><th class="small">Started</th><th class="small">Ended</th>
+      </tr></thead><tbody></tbody></table>
+    </section>
+
+    <section class="card" style="grid-column:1 / -1">
+      <h2>Audit Trail</h2>
+      <div class="small muted">Source: <code>$ACTIONS_AUDIT_PATH</code> → <code>GET /ops/actions/audit</code></div>
+      <table id="auditTbl"><thead><tr>
+        <th class="small">Time</th><th>Type</th><th>Target</th><th>Status</th><th class="small mono">Code</th><th class="small">Job</th>
+      </tr></thead><tbody></tbody></table>
+    </section>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- Confirm modal -->
+<div id="confirmModal" class="modal">
+  <div class="box">
+    <h3 style="margin:0 0 8px 0">Confirm run</h3>
+    <p class="small">Run action <code id="confId" class="mono"></code> now?</p>
+    <div class="row">
+      <button id="btnCancel">Cancel</button>
+      <button id="btnRun">Run</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=s=>document.querySelector(s); const html=(el,h)=>el.innerHTML=h;
+  const show=(m)=>{const t=$("#toast");t.textContent=m;t.classList.remove("hidden");setTimeout(()=>t.classList.add("hidden"),2000);};
+  const fmtTs=t=>t?new Date((typeof t==="number"?t:t.ts)*1000).toLocaleString():"";
+  const GET=u=>fetch(u,{credentials:'include'}).then(r=>r.ok?r.json():Promise.reject(r));
+  const POST=(u,token)=>fetch(u,{method:'POST',headers:{'X-Agent-Token':token||''},credentials:'include'}).then(r=>r.json());
+
+  // token + confirm toggle
+  let token=(function(){let t=(window.INIT_TOKEN||'').trim(); if(!t)t=localStorage.getItem('x_agent_token')||''; if(!t)t='jensen4254'; return t;})();
+  $("#tok").value=token; $("#saveTok").onclick=()=>{token=$("#tok").value.trim(); localStorage.setItem('x_agent_token',token); show('Token saved');};
+  const confirmKey='ui_confirm_runs'; const confirmDefault=true;
+  let confirmOn=(localStorage.getItem(confirmKey) ?? (confirmDefault?'1':'0'))==='1';
+  $("#confirmChk").checked=confirmOn;
+  $("#confirmChk").onchange=()=>{confirmOn=$("#confirmChk").checked; localStorage.setItem(confirmKey,confirmOn?'1':'0');};
+
+  // version + integrations
+  GET('/version').then(v=>{$("#ver").textContent=v.version||'—';}).catch(()=>{});
+  GET('/__diag/actions').then(d=>{const on=String((d.env&&d.env.INTEGRATIONS_ENABLED)||'').toLowerCase()==='true';
+    $("#intWarn").classList.toggle('hidden',on);
+    const s=$("#intState"); s.textContent='integrations: '+(on?'enabled':'disabled'); s.classList.toggle('ok',on); s.classList.toggle('warn',!on);
+  }).catch(()=>{});
+
+  // links
+  function loadLinks(){
+    GET('/ops/links').then(data=>{
+      const list=data.links||data||[];
+      if(!list.length){ html($("#links"),'<span class="muted">No operator links.</span>'); return; }
+      html($("#links"),'<ul>'+list.map(x=>`<li><a href="${x.url}" target="_blank" rel="noopener">${x.name||x.url}</a>${x.section?' <span class="muted">· '+x.section+'</span>':''}</li>`).join('')+'</ul>');
+    }).catch(()=>{ html($("#links"),'<span class="err">Failed to load /ops/links</span>'); });
+  }
+
+  // actions
+  function renderActions(arr){
+    const rows = arr.map(a=>{
+      const id=a.id||'(no id)'; const type=a.type||'-'; const tgt=a.url||a.path||''; const m=(a.method||'GET').toUpperCase();
+      return `<tr>
+        <td class="mono">${id}</td><td><span class="pill">${type}</span></td><td class="mono small">${m}</td>
+        <td class="mono small">${tgt}</td><td><button data-id="${id}" class="runBtn">Run</button></td>
+      </tr>`;
+    }).join('');
+    html($("#actions"), `<table><thead><tr><th>ID</th><th>Type</th><th>Method</th><th>Target</th><th></th></tr></thead><tbody>${rows}</tbody></table>`);
+    document.querySelectorAll('.runBtn').forEach(btn=>{
+      btn.onclick = ()=>{
+        const id=btn.getAttribute('data-id');
+        const go = ()=>{ btn.disabled=true; btn.textContent='Running…';
+          POST(`/ops/actions/execute?id=${encodeURIComponent(id)}`, token)
+            .then(()=>{ show('Queued'); setTimeout(()=>{loadJobs();loadAudit();},250); })
+            .catch(()=>{ show('Execute failed'); })
+            .finally(()=>{ btn.disabled=false; btn.textContent='Run'; });
+        };
+        if (confirmOn) openConfirm(id, go); else go();
+      };
+    });
+  }
+  function loadActions(){ GET('/integrations/actions').then(arr=>{ if(!Array.isArray(arr)||!arr.length){ html($("#actions"),'<span class="muted">No actions found.</span>'); return; } renderActions(arr); }).catch(()=>{ html($("#actions"),'<span class="err">Failed to load /integrations/actions</span>'); }); }
+
+  // jobs
+  function loadJobs(){
+    GET('/ops/jobs').then(data=>{
+      const jobs=(data.jobs||[]);
+      if(!jobs.length){ html($("#jobsTbl tbody"),'<tr><td colspan="6" class="muted">No jobs.</td></tr>'); return; }
+      const rows = jobs.map(j=>{
+        const p=j.payload||{}; const st=j.status==='done'?'<span class="ok">done</span>':(j.status==='running'?'<span class="warn">running</span>':(j.status==='error'?'<span class="err">error</span>':j.status));
+        return `<tr>
+          <td class="mono small">${j.id}</td><td>${st}</td><td class="small mono">${p.type||''}</td>
+          <td class="small mono">${p.url||p.path||''}</td><td class="small">${fmtTs(j.started)}</td><td class="small">${fmtTs(j.ended)}</td>
+        </tr>`;
+      }).join('');
+      html($("#jobsTbl tbody"), rows);
+    }).catch(()=>{ html($("#jobsTbl tbody"),'<tr><td colspan="6" class="err">Failed to load /ops/jobs</td></tr>'); });
+  }
+
+  // audit
+  function loadAudit(){
+    GET('/ops/actions/audit?limit=200').then(data=>{
+      const arr=(data.audit||[]);
+      if(!arr.length){ html($("#auditTbl tbody"),'<tr><td colspan="6" class="muted">No audit entries.</td></tr>'); return; }
+      const rows = arr.slice().reverse().map(a=>{
+        const t=a.ts||a.time; const typ=a.type||((a.payload&&a.payload.type)||''); const tgt=(a.payload&&a.payload.url)||a.url||'';
+        const st=a.status||a.event||'-'; const code=(a.result&&a.result.code)||''; const jid=a.job_id||'';
+        const cls=st==='done'?'ok':(st==='error'?'err':'warn');
+        return `<tr><td class="small">${fmtTs(t)}</td><td>${typ}</td><td class="mono small">${tgt}</td>
+                <td class="${cls} small">${st}</td><td class="mono small">${code||''}</td><td class="mono small">${jid}</td></tr>`;
+      }).join('');
+      html($("#auditTbl tbody"), rows);
+    }).catch(()=>{ html($("#auditTbl tbody"),'<tr><td colspan="6" class="err">Failed to load /ops/actions/audit</td></tr>'); });
+  }
+
+  // confirm modal
+  const modal=$("#confirmModal"), idSpan=$("#confId"), btnRun=$("#btnRun"), btnCancel=$("#btnCancel");
+  function openConfirm(id, onok){ idSpan.textContent=id; modal.style.display='flex'; btnRun.onclick=()=>{ modal.style.display='none'; onok(); }; btnCancel.onclick=()=>{ modal.style.display='none'; }; }
+  window.openConfirm=openConfirm;
+
+  // boot
+  loadLinks(); loadActions(); loadJobs(); loadAudit();
+  setInterval(loadJobs,2500); setInterval(loadAudit,5000);
+})();
+</script>
+</body></html>

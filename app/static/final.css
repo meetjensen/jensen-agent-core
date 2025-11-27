@@ -1,0 +1,269 @@
+/* ===== FINAL, SINGLE SOURCE OF TRUTH ===== */
+
+/* 1) Header: white bar + thin divider (no double band) */
+.header{
+  background:#fff !important;
+  border-bottom:1px solid #e5e7eb !important;
+  box-shadow:0 2px 8px rgba(16,24,40,.06) !important;
+  padding:12px 24px !important;
+}
+
+/* 2) Brand row & logo (default = left on app pages) */
+.brand{display:flex !important; align-items:center !important; gap:12px !important;}
+.brand-logo{height:64px !important; margin-top:6px !important; width:auto !important; object-fit:contain !important;}
+
+/* On the LOGIN page ONLY, center the brand row */
+body.login .brand{justify-content:center !important;}
+
+/* 3) Nav buttons: one, uniform size */
+.nav{display:flex !important; align-items:center !important; justify-content:center !important; gap:16px !important;}
+.nav a,.btn{
+  display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  height:44px !important;                    /* consistent height */
+  min-width:156px !important;                /* consistent width for all labels */
+  padding:0 18px !important;
+  border:1px solid var(--border) !important; border-radius:12px !important;
+  background:#3b82f6 !important; color:#fff !important; /* keeps your blue */
+  white-space:nowrap !important; line-height:1 !important; font-weight:600 !important;
+}
+/* === PHASE8: header nav pill size = "Open Chat" button === */
+header.header nav.nav a.btn{
+  font-size:16px !important;
+  font-weight:700 !important;
+  line-height:1.2 !important;
+  padding:12px 26px !important;      /* height via top/bottom padding */
+  border-radius:12px !important;      /* same roundedness */
+  width:auto !important;              /* let text + padding define width */
+  min-width:unset !important;
+  background:#2d6cdf !important;
+  color:#fff !important;
+  border:1px solid #2d6cdf !important;
+  box-shadow:0 6px 14px rgba(45,108,223,0.18) !important;
+}
+/* PHASE8: Uniform nav pill size (height = Open Chat, width = "Dashboard") */
+header.header nav.nav a.btn{
+  /* Height matches Open Chat */
+  padding:12px 26px !important;   /* top/bottom = 12px, left/right = 26px */
+  border-radius:12px !important;
+  font-size:16px !important;
+  font-weight:700 !important;
+  line-height:1.2 !important;
+
+  /* Width matches "Dashboard":
+     10ch ≈ text width of "Dashboard" (10 letters) in the same font,
+     plus both side paddings (26px + 26px = 52px). */
+  width: calc(10ch + 52px) !important;
+  min-width: calc(10ch + 52px) !important;
+  max-width: calc(10ch + 52px) !important;
+}
+/* PHASE8: Tighten nav pills (reduce word→edge gap) */
+header.header nav.nav a.btn{
+  padding:10px 16px !important;          /* thinner: height + side gap */
+  width: calc(10ch + 32px) !important;   /* uniform width = "Dashboard" */
+  min-width: calc(10ch + 32px) !important;
+  max-width: calc(10ch + 32px) !important;
+}
+/* PHASE8: tighter nav pills */
+header.header nav.nav{ gap:10px !important; }     /* reduce space between pills */
+
+header.header nav.nav a.btn{
+  /* tighter vertical + horizontal padding */
+  padding:6px 12px !important;                    /* was 10/16 or 12/26 */
+  border-radius:10px !important;
+
+  /* uniform width based on "Dashboard" with new side padding (12px + 12px = 24px) */
+  width: calc(10ch + 24px) !important;
+  min-width: calc(10ch + 24px) !important;
+  max-width: calc(10ch + 24px) !important;
+
+  /* keep existing color/font/shadow from earlier rules */
+}
+/* PHASE8: tightest nav pills so far */
+header.header nav.nav{ gap:8px !important; }      /* closer pills */
+
+header.header nav.nav a.btn{
+  padding:5px 10px !important;                    /* tighter: top/bottom 5px, sides 10px */
+  border-radius:10px !important;
+
+  /* Uniform width based on "Dashboard":
+     10ch for text + 20px total side padding (10 + 10) */
+  width: calc(10ch + 20px) !important;
+  min-width: calc(10ch + 20px) !important;
+  max-width: calc(10ch + 20px) !important;
+}
+/* PHASE8: ~25% tighter pills */
+header.header nav.nav{ gap:6px !important; }
+
+header.header nav.nav a.btn{
+  padding:4px 8px !important;                 /* was 5px 10px */
+  border-radius:10px !important;
+
+  /* Uniform width based on "Dashboard" with new side padding (8px + 8px = 16px) */
+  width: calc(10ch + 16px) !important;
+  min-width: calc(10ch + 16px) !important;
+  max-width: calc(10ch + 16px) !important;
+}
+/* PHASE8: vertical tighten only (keep width) */
+header.header nav.nav a.btn{
+  padding-top:3px !important;    /* ~35% tighter than 4px */
+  padding-bottom:3px !important; /* left/right remain 8px from prior rule */
+  /* width calc(10ch + 16px) remains unchanged */
+}
+/* PHASE8: extra-tight vertical only */
+header.header nav.nav a.btn{
+  padding-top:2px !important;      /* was 3px */
+  padding-bottom:2px !important;   /* was 3px */
+  line-height:1 !important;        /* remove extra text box height */
+  /* width remains: calc(10ch + 16px); sides remain 8px */
+}
+/* PHASE8: extra-extra tight vertical only (keep width) */
+header.header nav.nav a.btn{
+  padding-top:1px !important;
+  padding-bottom:1px !important;
+  line-height:1 !important;   /* keep text box tight */
+  /* width remains: calc(10ch + 16px); side padding remains 8px */
+}
+/* PHASE8: ultra-tight vertical only (width unchanged) */
+header.header nav.nav a.btn{
+  padding-top:0px !important;
+  padding-bottom:0px !important;
+  line-height:1 !important;     /* keep text box tight */
+  /* width remains: calc(10ch + 16px); side padding remains 8px */
+}
+/* PHASE8: 50% squeeze (vertical & horizontal), width recalculated for "Dashboard" */
+header.header nav.nav{ gap:3px !important; }
+
+header.header nav.nav a.btn{
+  padding-top:0px !important;      /* already at min; remains 0 */
+  padding-bottom:0px !important;
+  padding-left:4px !important;     /* 8px -> 4px (50% tighter) */
+  padding-right:4px !important;
+  line-height:1 !important;
+
+  /* Uniform width basis = "Dashboard" (10ch) + new total side padding (4px + 4px = 8px) */
+  width: calc(10ch + 8px) !important;
+  min-width: calc(10ch + 8px) !important;
+  max-width: calc(10ch + 8px) !important;
+}
+/* PHASE8: ~10% more gap between nav pills */
+header.header nav.nav{
+  gap:3.3px !important;
+}
+/* PHASE8: large gap between nav pills */
+header.header nav.nav{
+  gap:15px !important;  /* was ~3px */
+}
+/* ===== PHASE8: Make app header look like LOGIN header ===== */
+
+/* 1) Single thin white band, same proportions as login */
+header.header{
+  position:relative;
+  height:96px !important;                     /* login band height */
+  background:#fff !important;
+  border-bottom:1px solid #E5E7EB !important; /* faint divider like login */
+  box-shadow:0 1px 0 rgba(0,0,0,.02) !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;          /* center brand horizontally (like login) */
+  padding:0 20px !important;
+}
+
+/* 2) Brand visuals copied from login (logo size + typography) */
+header.header .brand{display:flex; align-items:center; gap:12px;}
+header.header .brand-logo{height:64px; width:auto; object-fit:contain; margin:0;}
+header.header .brand-name{font-size:40px; font-weight:800; letter-spacing:.5px; margin:0;}
+
+/* 3) Kill any extra background/pseudo stripes under the band */
+header.header::before,
+header.header::after,
+header.header .nav::before,
+header.header .nav::after{
+  content:none !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+/* 4) Keep the nav pills exactly as you tuned them, but sit them just below the band */
+header.header .nav{
+  position:absolute; left:50%; bottom:-10px; transform:translateX(-50%);
+  display:flex; align-items:center; gap:15px !important; /* your chosen gap */
+  background:transparent !important;
+}
+
+/* 5) Ensure the page content clears the overhang */
+main{ margin-top:48px !important; }
+/* ===== Header cleanup to match LOGIN (no second stripe) ===== */
+
+/* Thin top band (keep) */
+header.header{
+  position:relative;
+  height:96px !important;
+  background:#fff !important;
+  border-bottom:1px solid #E5E7EB !important;
+  box-shadow:0 1px 0 rgba(0,0,0,.02) !important;
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  padding:0 20px !important; z-index:1;
+}
+
+/* Remove the extra inner stripe/shadow from the brand wrapper only */
+header.header .brand,
+header.header .brand > div{
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+/* Ensure no pseudo elements re-add the stripe */
+header.header::before, header.header::after,
+header.header .brand::before, header.header .brand::after,
+header.header .nav::before,   header.header .nav::after{
+  content:none !important; background:transparent !important; box-shadow:none !important;
+}
+
+/* Brand visuals like login */
+header.header .brand{display:flex; align-items:center; justify-content:center; gap:12px;}
+header.header .brand-logo{height:64px; width:auto; object-fit:contain; margin:0;}
+header.header .brand-name{font-size:40px; font-weight:800; letter-spacing:.5px; margin:0;}
+
+/* Keep your approved pill sizes; place the row just below the band */
+header.header .nav{
+  position:absolute; left:50%; bottom:-10px; transform:translateX(-50%);
+  display:flex; align-items:center; gap:15px !important;
+  background:transparent !important; box-shadow:none !important; z-index:2;
+}
+
+/* Give room for the overhang; main/card remain untouched */
+main{ margin-top:48px !important; }
+
+/* === FINAL CLEAN CENTERED BRAND (login + ui) — PAGE CENTERED === */
+header.header {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  width: 100% !important;
+}
+
+header.header .brand {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;   /* centers the brand itself */
+  width: auto !important;                /* shrink to fit logo+text */
+  gap: 12px !important;                  /* space between logo and text */
+  white-space: nowrap !important;
+  margin: 0 auto !important;             /* center within header width */
+}
+
+header.header .brand-logo {
+  height: 64px !important;
+  width: auto !important;
+  object-fit: contain !important;
+  margin: 0 !important;
+}
+
+header.header .brand-name {
+  font-size: 40px !important;
+  font-weight: 800 !important;
+  letter-spacing: .5px !important;
+  margin: 0 !important;
+}

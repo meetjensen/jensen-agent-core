@@ -1,0 +1,23 @@
+# Synology metadata (permission issues)
+@eaDir
+**/@eaDir
+**/@eaDir/
+**/@eaDir/**
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# OS/editor noise
+.DS_Store
+**/.DS_Store
+
+# Backups/archives
+_backup_phase9/
+_archive/
+*.tgz
+
+# Git & secrets (don’t bake)
+.git/
+.env

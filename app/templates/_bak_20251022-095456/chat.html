@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"/><title>Jensen Agent — Chat</title></head>
+<body style="font-family:system-ui;line-height:1.5;padding:24px;max-width:720px;margin:auto">
+  <h1>Chat</h1>
+  <p>Enter your <code>X-Agent-Token</code> and a message. This calls <code>/chat</code> on the same origin.</p>
+  <label>Token <input id="tok" style="width:320px"></label>
+  <div style="margin-top:8px;">
+    <textarea id="msg" rows="4" style="width:100%;" placeholder="Type your message..."></textarea>
+  </div>
+  <button id="send">Send</button>
+  <pre id="out" style="background:#f7f7f7;padding:12px;white-space:pre-wrap;margin-top:12px;"></pre>
+<script>
+const btn = document.getElementById('send');
+btn.onclick = async () => {
+  const token = document.getElementById('tok').value.trim();
+  const message = document.getElementById('msg').value;
+  const out = document.getElementById('out');
+  out.textContent = 'Sending...';
+  try {
+    const r = await fetch('/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-Agent-Token': token},
+      body: JSON.stringify({message})
+    });
+    const t = await r.text();
+    out.textContent = `HTTP ${r.status}\n` + t;
+  } catch(e) {
+    out.textContent = 'Error: ' + e;
+  }
+};
+</script>
+</body>
+</html>

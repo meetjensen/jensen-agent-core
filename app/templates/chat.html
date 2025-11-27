@@ -1,0 +1,52 @@
+{% extends "_base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Chat</h2>
+    <div class="row" style="display:flex;gap:10px;margin-bottom:10px">
+      <input id="msg" type="text" placeholder="Say hello..." style="flex:1;padding:10px 12px;border:1px solid #d7dee6;border-radius:10px" />
+      <button id="send" class="btn">Send</button>
+    </div>
+    <pre id="out" style="min-height:160px;background:#f8fafc;border:1px solid #e5eaf0;border-radius:10px;padding:12px;white-space:pre-wrap">{}</pre>
+    <div class="tip" style="color:#6b7280;font-size:13px;margin-top:8px">Tip: token header is included automatically by this page.</div>
+  </div>
+
+  <script>
+    const out  = document.getElementById('out');
+    const msg  = document.getElementById('msg');
+    const send = document.getElementById('send');
+
+    // Token injected by server
+    const meta  = document.querySelector('meta[name="agent-token"]');
+    const TOKEN = (meta && meta.content || '').trim();
+
+    function buildHeaders(){
+      const h = {'Content-Type': 'application/json'};
+      if (TOKEN) {
+        // Send several common variants; backend accepts at least one
+        h['X-Agent-Token'] = TOKEN;
+        h['X-API-Key']     = TOKEN;
+        h['Authorization'] = `Bearer ${TOKEN}`;
+      }
+      return h;
+    }
+
+    async function doSend(){
+      const text = (msg.value || "").trim() || "Hello";
+      try {
+        const res  = await fetch('/chat_v15', {
+          method: 'POST',
+          headers: buildHeaders(),
+          credentials: 'include',
+          body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+        out.textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        out.textContent = JSON.stringify({ error: e?.message || String(e) }, null, 2);
+      }
+    }
+
+    send.addEventListener('click', doSend);
+    msg.addEventListener('keydown', e => { if (e.key === 'Enter') doSend(); });
+  </script>
+{% endblock %}

@@ -1,0 +1,1295 @@
+:root{
+  --bg:        #f7fbff;
+  --card:      #ffffff;
+  --text:      #0b1621;
+  --muted:     #667085;
+  --border:    #e5eaf0;
+  --primary: #0B78C6; /* change this to your exact brand blue when ready */
+  --radius:    12px;
+  --shadow:    0 4px 12px rgba(16,24,40,0.06);
+}
+
+*{box-sizing:border-box} html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.06);
+}
+
+/* Brand area (logo + text aligned cleanly) */
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  font-weight: 700;
+}
+
+.brand-logo {
+  height: 64px;
+  width: auto;
+  object-fit: contain;
+  margin-top: 0;
+}
+
+/* Nav bar alignment + spacing */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+.nav a,.btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 16px;border:1px solid var(--border);border-radius:12px;text-decoration:none;color:#1f2937;background:#fff;line-height:1}
+.primary{background:var(--primary);color:#fff;border:0}
+.primary:hover{filter:brightness(0.96)}
+
+.container{max-width:980px;margin:28px auto;padding:0 16px}
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)
+}
+
+pre.code{
+  background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px;white-space:pre-wrap
+}
+
+input,select,textarea{
+  border:1px solid var(--border);border-radius:10px;padding:10px 12px;width:100%
+}
+label{font-size:12px;color:var(--muted)}
+.footer{color:var(--muted);font-size:12px}
+
+a{color:var(--primary)}
+
+/* === Phase 8 polish: brand & buttons === */
+
+/* Make header a touch taller so the bigger logo breathes */
+header { height: 64px; }
+
+/* Ensure brand area and nav have spacing */
+header .nav { display: flex; gap: 10px; }
+
+/* Make the logo size consistent everywhere (matches login) */
+header img[alt="brand"], .brand-logo { width: 80px; height: auto; }
+
+/* Base button look (applies to form buttons AND nav links) */
+button,
+.btn,
+.nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;       /* <- fixes "width equals word length" */
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Hover/focus */
+button:hover,
+.btn:hover,
+.nav a:hover {
+  filter: brightness(0.95);
+}
+
+/* Disabled state */
+button:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Optional variants if you ever use them */
+.btn-secondary,
+.nav a.secondary {
+  background: #fff;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.btn-outline {
+  background: #fff;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+/* --- Login hero (brand image + name centered) --- */
+.login-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0;
+}
+
+.login-hero img {
+  width: 140px;           /* tweak if you want it a touch larger/smaller */
+  height: auto;           /* maintain aspect ratio */
+  display: block;
+}
+
+.login-hero .brand-name {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  color: var(--primary);  /* brand blue is already set; change once in theme if needed */
+  text-align: center;
+}
+
+/* --- Header/brand global: prevent overlap and standardize sizing --- */
+header { display: flex; align-items: center; justify-content: space-between; }
+header .brand-link { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+header .brand-link .brand-logo { height: 40px; width: auto; display: block; } /* keep ratio */
+header .brand-link .brand-name { font-weight: 800; color: var(--primary); }
+
+/* --- Login page only: center brand inside the white header strip --- */
+.login-page header { justify-content: center; height: 96px; } /* give it some breathing room */
+.login-page header .nav { display: none; }                    /* hide nav buttons on login */
+.login-page header .brand-link { flex-direction: column; align-items: center; gap: 6px; }
+/* Slightly smaller header name so it balances visually with the logo */
+.login-page header .brand-link .brand-name { font-size: 20px; }
+
+/* === Revert header nav to simple links (not big pill buttons) === */
+header { padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; }
+header .nav { display: flex; gap: 12px; }
+
+/* Force header nav links back to link style (override earlier .btn/.nav rules) */
+header .nav a {
+  all: unset;                    /* wipe pill styles from previous rule */
+  display: inline-block;
+  padding: 8px 12px;             /* small, readable hit area */
+  border-radius: 6px;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+header .nav a:hover {
+  background: rgba(0,0,0,.06);   /* subtle hover, not a big button */
+}
+
+/* Keep login page branding centered; nav hidden there as before */
+.login-page header { justify-content: center; height: 96px; }
+.login-page header .nav { display: none; }
+
+/* === Revert header nav to simple links (not big pill buttons) === */
+header { padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; }
+header .nav { display: flex; gap: 12px; }
+
+/* Force header nav links back to link style (override earlier .btn/.nav rules) */
+header .nav a {
+  all: unset;                    /* wipe pill styles from previous rule */
+  display: inline-block;
+  padding: 8px 12px;             /* small, readable hit area */
+  border-radius: 6px;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+header .nav a:hover {
+  background: rgba(0,0,0,.06);   /* subtle hover, not a big button */
+}
+
+/* Keep login page branding centered; nav hidden there as before */
+.login-page header { justify-content: center; height: 96px; }
+.login-page header .nav { display: none; }
+
+/* === Revert header nav to simple links (not big pill buttons) === */
+header { padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; }
+header .nav { display: flex; gap: 12px; }
+
+/* Force header nav links back to link style (override earlier .btn/.nav rules) */
+header .nav a {
+  all: unset;                    /* wipe pill styles from previous rule */
+  display: inline-block;
+  padding: 8px 12px;             /* small, readable hit area */
+  border-radius: 6px;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+header .nav a:hover {
+  background: rgba(0,0,0,.06);   /* subtle hover, not a big button */
+}
+
+/* Keep login page branding centered; nav hidden there as before */
+.login-page header { justify-content: center; height: 96px; }
+.login-page header .nav { display: none; }
+/* --- restore good layout + center logo --- */
+.header {
+  background: #fff;
+  border-bottom: 1px solid #e6ebf2;
+  text-align: center;
+  padding-top: 24px;
+  position: relative;
+  z-index: 2;
+}
+.header-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.header-logo {
+  height: 70px;
+  width: auto;
+}
+.header-title {
+  color: #2d6cdf;
+  font-weight: 800;
+  font-size: 28px;
+  margin-top: 8px;
+  letter-spacing: 0.02em;
+}
+.nav-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  transform: translateY(-20px);
+  margin-bottom: -10px;
+}
+.nav-btn {
+  background: #2d6cdf;
+  color: #fff;
+  padding: 12px 26px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 700;
+  box-shadow: 0 5px 10px rgba(45, 108, 223, 0.2);
+}
+.nav-btn:hover { filter: brightness(1.08); }
+/* === Restore clean header layout === */
+.topbar {
+  background: #fff;
+  border-bottom: 1px solid #e6ebf2;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Layout */
+.topbar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  position: relative;
+}
+
+/* Logo and name — left aligned */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-logo {
+  height: 64px;
+  width: auto;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+.brand-name {
+  color: #2d6cdf;
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: 0.02em;
+}
+
+/* Nav centered horizontally */
+.nav-row {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px); /* lowered slightly */
+  display: flex;
+  gap: 22px;
+}
+
+/* Button styling */
+.nav-btn {
+  background: #2d6cdf;
+  color: #fff;
+  padding: 12px 26px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 700;
+  box-shadow: 0 5px 10px rgba(45, 108, 223, 0.2);
+}
+.nav-btn:hover { filter: brightness(1.08); }
+/* === End header === */
+/* === Adjust nav buttons to overlap header 50/50 === */
+
+/* Keep topbar same as login page */
+.topbar-inner {
+  height: 78px !important;
+  align-items: center;
+  padding: 0 24px;
+}
+
+/* Lower nav buttons to overlap white bar */
+.nav-row {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) translateY(38px) !important; /* Halfway overlap */
+  display: flex;
+  gap: 22px;
+}
+
+/* Preserve button appearance */
+.nav-btn {
+  background: #2d6cdf;
+  color: #fff;
+  padding: 12px 26px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 6px 14px rgba(45,108,223,0.18);
+  transition: transform .05s ease, filter .15s ease;
+}
+.nav-btn:hover { filter: brightness(1.06); }
+.nav-btn:active { transform: translateY(1px); }
+
+/* Give main content some breathing room below */
+main.page {
+  margin-top: 42px !important;
+}
+/* === End 50/50 overlap styling === */
+/* === Correct 50/50 button overlap fix === */
+.nav-row {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) translateY(54px) !important; /* deeper drop */
+  display: flex;
+  gap: 22px;
+  z-index: 5;
+}
+
+/* Reduce header height slightly for perfect split */
+.topbar-inner {
+  height: 72px !important;
+  align-items: center;
+}
+
+/* Add subtle lift for better contrast against body */
+.nav-btn {
+  box-shadow: 0 8px 18px rgba(45,108,223,0.22);
+}
+/* ===== JENSEN Header — final, high-priority overrides ===== */
+header.topbar { background:#fff; border-bottom:1px solid #e6ebf2; position:sticky; top:0; z-index:10; }
+
+header.topbar .topbar-inner{
+  position:relative;
+  max-width:1200px;
+  margin:0 auto;
+  height:84px !important;           /* white bar height */
+  display:flex;
+  align-items:center;
+  justify-content:space-between;     /* brand stays left */
+  padding:0 20px;
+}
+
+/* Brand (left) */
+header.topbar .brand{ display:flex; align-items:center; gap:10px; }
+header.topbar .brand .brand-logo{
+  height:56px !important;            /* keeps inside bar */
+  width:auto; background:transparent!important; border-radius:0!important;
+}
+header.topbar .brand .brand-name{
+  color:#2d6cdf; font-weight:800; font-size:24px; line-height:1; letter-spacing:.02em;
+}
+
+/* Nav row centered, lowered to overlap ~50/50 */
+header.topbar .nav-row{
+  position:absolute !important;
+  left:50% !important;
+  transform:translateX(-50%) translateY(42px) !important; /* tune this for more/less drop */
+  display:flex; gap:22px; z-index:5;
+}
+
+/* Buttons */
+header.topbar .nav-row .nav-btn{
+  background:#2d6cdf; color:#fff; padding:12px 26px;
+  border-radius:12px; text-decoration:none; font-weight:700;
+  box-shadow:0 8px 18px rgba(45,108,223,.22);
+  transition:transform .05s ease, filter .15s ease;
+}
+header.topbar .nav-row .nav-btn:hover{ filter:brightness(1.06); }
+header.topbar .nav-row .nav-btn:active{ transform:translateY(1px); }
+
+/* Give content breathing room so overlapped buttons don't hit it */
+main.page{ margin-top:58px !important; }
+/* ===== End JENSEN Header overrides ===== */
+/* ===== JENSEN header — FINAL cross-browser override ===== */
+
+/* White bar + baseline */
+header.topbar{
+  background:#fff !important;
+  border-bottom:1px solid #e6ebf2 !important;
+  position:sticky; top:0; z-index:100;
+}
+
+/* Thicker white band, left-aligned brand */
+header.topbar .topbar-inner{
+  position:relative !important;
+  max-width:1200px !important;
+  margin:0 auto !important;
+  height:110px !important;           /* thicker white bar */
+  padding:0 24px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important; /* keep everything left by default */
+  gap:24px !important;
+}
+
+/* Brand (logo + name) */
+header.topbar .brand{
+  display:flex !important; align-items:center !important; gap:12px !important;
+}
+header.topbar .brand .brand-logo{
+  height:72px !important; width:auto !important;
+  background:transparent !important; border-radius:0 !important;
+}
+header.topbar .brand .brand-name{
+  color:#2d6cdf !important; font-weight:800 !important;
+  font-size:24px !important; line-height:1 !important; letter-spacing:.02em !important;
+}
+
+/* Center the nav row and make it overlap the white bar 50/50 */
+header.topbar .nav-row{
+  position:absolute !important;
+  left:50% !important;
+  transform:translateX(-50%) !important;
+  bottom:-28px !important;                 /* drops buttons ~50% below bar */
+  display:flex !important; gap:22px !important; z-index:5 !important;
+}
+
+/* Buttons */
+header.topbar .nav-row .nav-btn{
+  background:#2d6cdf !important; color:#fff !important;
+  padding:12px 26px !important; border-radius:12px !important;
+  font-weight:700 !important; text-decoration:none !important;
+  box-shadow:0 8px 18px rgba(45,108,223,.22) !important;
+  transition:transform .05s ease, filter .15s ease !important;
+}
+header.topbar .nav-row .nav-btn:hover{ filter:brightness(1.06) !important; }
+header.topbar .nav-row .nav-btn:active{ transform:translateY(1px) !important; }
+
+/* Give page content air so overlapped buttons don’t collide with it */
+main.page{ margin-top:96px !important; }
+
+/* Narrow screens: pull buttons fully inside the bar if needed */
+@media (max-width: 900px){
+  header.topbar .topbar-inner{ height:90px !important; }
+  header.topbar .nav-row{ position:static !important; transform:none !important; margin-left:auto !important; }
+}
+ /* ===== End FINAL override ===== */
+/* ===== JENSEN header — FINAL cross-browser override ===== */
+
+/* White bar + baseline */
+header.topbar{
+  background:#fff !important;
+  border-bottom:1px solid #e6ebf2 !important;
+  position:sticky; top:0; z-index:100;
+}
+
+/* Thicker white band, left-aligned brand */
+header.topbar .topbar-inner{
+  position:relative !important;
+  max-width:1200px !important;
+  margin:0 auto !important;
+  height:110px !important;           /* thicker white bar */
+  padding:0 24px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important; /* keep everything left by default */
+  gap:24px !important;
+}
+
+/* Brand (logo + name) */
+header.topbar .brand{
+  display:flex !important; align-items:center !important; gap:12px !important;
+}
+header.topbar .brand .brand-logo{
+  height:72px !important; width:auto !important;
+  background:transparent !important; border-radius:0 !important;
+}
+header.topbar .brand .brand-name{
+  color:#2d6cdf !important; font-weight:800 !important;
+  font-size:24px !important; line-height:1 !important; letter-spacing:.02em !important;
+}
+
+/* Center the nav row and make it overlap the white bar 50/50 */
+header.topbar .nav-row{
+  position:absolute !important;
+  left:50% !important;
+  transform:translateX(-50%) !important;
+  bottom:-28px !important;                 /* drops buttons ~50% below bar */
+  display:flex !important; gap:22px !important; z-index:5 !important;
+}
+
+/* Buttons */
+header.topbar .nav-row .nav-btn{
+  background:#2d6cdf !important; color:#fff !important;
+  padding:12px 26px !important; border-radius:12px !important;
+  font-weight:700 !important; text-decoration:none !important;
+  box-shadow:0 8px 18px rgba(45,108,223,.22) !important;
+  transition:transform .05s ease, filter .15s ease !important;
+}
+header.topbar .nav-row .nav-btn:hover{ filter:brightness(1.06) !important; }
+header.topbar .nav-row .nav-btn:active{ transform:translateY(1px) !important; }
+
+/* Give page content air so overlapped buttons don’t collide with it */
+main.page{ margin-top:96px !important; }
+
+/* Narrow screens: pull buttons fully inside the bar if needed */
+@media (max-width: 900px){
+  header.topbar .topbar-inner{ height:90px !important; }
+  header.topbar .nav-row{ position:static !important; transform:none !important; margin-left:auto !important; }
+}
+ /* ===== End FINAL override ===== */
+/* ===== JENSEN header — FINAL OVERRIDE (wins everywhere) ===== */
+
+/* Base top bar identical to login */
+header.topbar{
+  background:#fff !important;
+  border-bottom:1px solid #e6ebf2 !important;
+  position:sticky !important; top:0 !important; z-index:100 !important;
+}
+
+/* White band thickness + layout */
+header.topbar .topbar-inner{
+  position:relative !important;
+  max-width:1200px !important;
+  margin:0 auto !important;
+  height:108px !important;              /* band height */
+  padding:0 24px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important; /* brand on the left */
+  gap:24px !important;
+}
+
+/* Brand (logo + name) – match login look/scale */
+header.topbar .brand{ display:flex !important; align-items:center !important; gap:12px !important; }
+header.topbar .brand .brand-logo{
+  height:68px !important; width:auto !important;
+  background:transparent !important; border-radius:0 !important;
+}
+header.topbar .brand .brand-name{
+  color:#2d6cdf !important; font-weight:800 !important;
+  font-size:28px !important; line-height:1 !important; letter-spacing:.02em !important;
+}
+
+/* Nav buttons: centered horizontally, 50% overlap the white band */
+header.topbar .nav-row{
+  position:absolute !important;
+  left:50% !important; transform:translateX(-50%) !important;
+  bottom:-34px !important;                 /* ~half outside the band */
+  display:flex !important; gap:22px !important; z-index:5 !important;
+}
+
+/* Button visuals */
+header.topbar .nav-row .nav-btn{
+  background:#2d6cdf !important; color:#fff !important;
+  padding:12px 26px !important; border-radius:12px !important;
+  font-weight:700 !important; text-decoration:none !important;
+  box-shadow:0 8px 18px rgba(45,108,223,.22) !important;
+  transition:transform .05s ease, filter .15s ease !important;
+}
+header.topbar .nav-row .nav-btn:hover{ filter:brightness(1.06) !important; }
+header.topbar .nav-row .nav-btn:active{ transform:translateY(1px) !important; }
+
+/* Push page content down so overlapped buttons never collide */
+main.page{ margin-top:120px !important; }
+
+/* Narrow screens: keep things readable */
+@media (max-width: 900px){
+  header.topbar .topbar-inner{ height:90px !important; }
+  header.topbar .nav-row{ position:static !important; transform:none !important; margin-left:auto !important; bottom:auto !important; }
+  main.page{ margin-top:24px !important; }
+}
+/* ===== End FINAL OVERRIDE ===== */
+/* ===== JENSEN /ui/* header override (no new classes) ===== */
+
+/* White band baseline + sticky */
+header{
+  background:#fff !important;
+  border-bottom:1px solid #e6ebf2 !important;
+  position:sticky !important; top:0 !important; z-index:100 !important;
+}
+
+/* The first wrapper div inside <header> – make it the “band” */
+header > div:first-child{
+  position:relative !important;
+  max-width:1200px !important;
+  margin:0 auto !important;
+  height:108px !important;                 /* band height */
+  padding:0 24px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;   /* keep brand on the left */
+  gap:24px !important;
+}
+
+/* Brand logo + name (use whatever you already have: img + .brand-name) */
+header img.brand-logo{
+  height:68px !important; width:auto !important;
+  background:transparent !important; border-radius:0 !important;
+}
+header .brand-name{
+  color:#2d6cdf !important; font-weight:800 !important;
+  font-size:28px !important; line-height:1 !important; letter-spacing:.02em !important;
+}
+
+/* Nav buttons centered and overlapping ~50% below the band */
+header nav{
+  position:absolute !important;
+  left:50% !important; transform:translateX(-50%) !important;
+  bottom:-34px !important;                  /* ~half hangs below */
+  display:flex !important; gap:22px !important; z-index:5 !important;
+}
+
+/* Button look; works with your existing <a class="btn"> links */
+header nav a.btn{
+  background:#2d6cdf !important; color:#fff !important;
+  padding:12px 26px !important; border-radius:12px !important;
+  font-weight:700 !important; text-decoration:none !important;
+  box-shadow:0 8px 18px rgba(45,108,223,.22) !important;
+  transition:transform .05s ease, filter .15s ease !important;
+}
+header nav a.btn:hover{ filter:brightness(1.06) !important; }
+header nav a.btn:active{ transform:translateY(1px) !important; }
+
+/* Push page content down so overlapped buttons don’t collide */
+main{ margin-top:120px !important; }
+
+/* Narrow screens: pull nav inside the band and reduce height */
+@media (max-width: 900px){
+  header > div:first-child{ height:90px !important; }
+  header nav{ position:static !important; transform:none !important; bottom:auto !important; margin-left:auto !important; }
+  main{ margin-top:24px !important; }
+}
+/* ===== End override ===== */
+...
+/* --- JENSEN: keep brand fully left; keep nav centered & overlapping --- */
+
+/* make the first header row behave like the login page (brand on the left) */
+header > div:first-child{
+  justify-content:flex-start !important;   /* left-align row contents */
+}
+
+/* a little spacing between logo and name */
+header .brand-name{ margin-left:12px !important; }
+
+/* ensure nav stays centered and half below the white band */
+header nav{
+  position:absolute !important;
+  left:50% !important; transform:translateX(-50%) !important;
+  bottom:-34px !important;                   /* ~50/50 overlap */
+  z-index:5 !important;
+}
+
+/* make sure page content clears the overlapped buttons */
+main{ margin-top:120px !important; }
+/* --- JENSEN: brand left like login, nav centered & overlapping --- */
+header > div:first-child{
+  max-width:none !important; width:100% !important; margin:0 !important;
+  padding:0 24px !important; display:flex !important; align-items:center !important;
+  justify-content:flex-start !important; gap:24px !important;
+}
+header .brand-name{ margin-left:12px !important; }
+header{ position:relative !important; }
+header nav{ position:absolute !important; left:50% !important; transform:translateX(-50%) !important; bottom:-34px !important; z-index:5 !important; }
+main{ margin-top:120px !important; }
+/* ===== JENSEN — final header layout for /ui/* ===== */
+
+/* White band baseline */
+header{
+  background:#fff !important;
+  border-bottom:1px solid #e6ebf2 !important;
+  position:sticky !important; top:0 !important; z-index:100 !important;
+}
+
+/* The band row (first div in header) — left-align like login */
+header > div:first-child{
+  position:relative !important;
+  max-width:1200px !important;
+  margin:0 auto !important;
+  height:112px !important;                 /* band height */
+  padding:0 24px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;   /* brand hard left */
+  gap:16px !important;
+}
+
+/* Logo + brand text */
+header img.brand_logo,
+header img.brand-logo{
+  height:72px !important; width:auto !important;
+  background:transparent !important; border-radius:0 !important;
+}
+
+header .brand-name{
+  margin-left:12px !important;
+  color:#2d6cdf !important; font-weight:800 !important;
+  font-size:28px !important; line-height:1 !important; letter-spacing:.02em !important;
+}
+
+/* Center nav and hang ~50% below the band */
+header nav{
+  position:absolute !important;
+  left:50% !important; transform:translateX(-50%) !important;
+  bottom:-34px !important;                 /* half below the band */
+  display:flex !important; gap:22px !important; z-index:5 !important;
+}
+
+/* Button visuals (your <a class="btn"> links) */
+header nav a.btn{
+  background:#2d6cdf !important; color:#fff !important;
+  padding:12px 26px !important; border-radius:12px !important;
+  font-weight:700 !important; text-decoration:none !important;
+  box-shadow:0 8px 18px rgba(45,108,223,.22) !important;
+  transition:transform .05s ease, filter .15s ease !important;
+}
+header nav a.btn:hover{ filter:brightness(1.06) !important; }
+header nav a.btn:active{ transform:translateY(1px) !important; }
+
+/* Keep content from colliding with overlapped buttons */
+main{ margin-top:128px !important; }
+
+/* Narrow screens: pull nav inside the band (no overlap) */
+@media (max-width: 900px){
+  header > div:first-child{ height:90px !important; }
+  header nav{ position:static !important; transform:none !important; bottom:auto !important; margin-left:auto !important; }
+  main{ margin-top:24px !important; }
+}
+/* ===== End ===== */
+/* ===== UI pages ONLY (login unaffected) ===== */
+/* :has(nav) matches headers that contain the nav bar; login has no nav */
+header:has(nav) > div:first-child{
+  /* increase the white band by ~50% and keep brand left like login */
+  height: 150px !important;          /* if current is ~100px, +50% = 150px */
+  justify-content: flex-start !important;
+}
+
+/* keep the nav centered and half-over the band */
+header:has(nav) nav{
+  position: absolute !important;
+  left: 50% !important; transform: translateX(-50%) !important;
+  bottom: -34px !important;          /* ~50/50 overlap */
+  z-index: 5 !important;
+}
+
+/* push content down so it doesn't collide with the overlapped buttons */
+main{ margin-top: 140px !important; }
+/* ===== end ===== */
+/* ===== UI ribbon height — extend band, leave login alone ===== */
+
+/* Make the top white ribbon taller */
+header > div:first-child{
+  height: 180px !important;   /* ~50% taller; bump to 200px if you want near-double */
+}
+
+/* Keep nav centered, sitting half-over the ribbon */
+header nav{
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: -34px !important;
+  z-index: 5 !important;
+}
+
+/* Ensure page content clears the overlapped buttons */
+main{
+  margin-top: 160px !important;  /* raise to ~180px if you set height:200px */
+}
+/* ===== Force extend white ribbon on UI pages (ignore login) ===== */
+
+/* target the header band directly — !important everywhere to override inline */
+header > div:first-child {
+  height: 220px !important;       /* almost double the previous size */
+  padding-top: 24px !important;   /* gives breathing space for logo */
+  padding-bottom: 24px !important;
+  background: #fff !important;    /* force white band */
+  align-items: center !important;
+}
+
+/* keep buttons centered exactly where they were */
+header nav {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: -34px !important;
+  z-index: 5 !important;
+}
+
+/* push content down accordingly so nothing overlaps */
+main {
+  margin-top: 200px !important;
+}
+
+/* optional safety: prevent this from touching login page (which lacks nav) */
+header:not(:has(nav)) > div:first-child {
+  height: auto !important;
+  padding: 0 !important;
+}
+/* === Full-width header fix for UI pages only (NOT login) === */
+header:has(> nav) {
+  width: 100% !important;
+  background: #fff !important;
+  border-bottom: 1px solid #e6ebf2 !important;
+  padding-top: 32px !important;     /* add breathing room above */
+  padding-bottom: 70px !important;  /* extend ribbon downward */
+  margin: 0 !important;
+}
+
+/* remove centering constraint from inner div */
+header:has(> nav) > div:first-child {
+  max-width: none !important;
+  width: 100% !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+}
+
+/* keep nav centered nicely under the brand */
+header:has(> nav) > nav {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: -40px !important;   /* visually centered in overlap */
+  z-index: 5 !important;
+}
+
+/* push content down appropriately */
+body:has(header > nav) main {
+  margin-top: 180px !important;
+}
+/* === Full-width header fix for UI pages only (NOT login) === */
+header:has(> nav) {
+  width: 100% !important;
+  background: #fff !important;
+  border-bottom: 1px solid #e6ebf2 !important;
+  padding-top: 32px !important;     /* add breathing room above */
+  padding-bottom: 70px !important;  /* extend ribbon downward */
+  margin: 0 !important;
+}
+
+/* remove centering constraint from inner div */
+header:has(> nav) > div:first-child {
+  max-width: none !important;
+  width: 100% !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+}
+
+/* keep nav centered nicely under the brand */
+header:has(> nav) > nav {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: -40px !important;   /* visually centered in overlap */
+  z-index: 5 !important;
+}
+
+/* push content down appropriately */
+body:has(header > nav) main {
+  margin-top: 180px !important;
+}
+
+/* === ui ribbon fix === */
+/* ===== /ui/ header fix: only headers that have a nav (won’t hit login) ===== */
+header:has(nav){
+  background:#fff !important;
+  border-bottom:1px solid #e6ebf2 !important;
+}
+
+/* Make the white band taller and keep brand on the left */
+header:has(nav) > div:first-child{
+  position:relative !important;
+  max-width:1200px !important;     /* room for the brand + buttons */
+  margin:0 auto !important;
+  height:156px !important;         /* ~1.5× taller than before */
+  padding:0 24px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;  /* brand left (like login) */
+  gap:24px !important;
+  overflow:visible !important;     /* prevents robot head clipping */
+}
+
+/* Brand sizing */
+header:has(nav) img.brand-logo{
+  height:72px !important; width:auto !important;
+  background:transparent !important; border-radius:0 !important;
+}
+header:has(nav) .brand-name{
+  font-size:28px !important; font-weight:800 !important; letter-spacing:.02em !important;
+  color:#2d6cdf !important;
+  margin-left:12px !important;
+}
+
+/* Center the nav and hang ~50% below the band */
+header:has(nav) nav{
+  position:absolute !important;
+  left:50% !important; transform:translateX(-50%) !important;
+  bottom:-30px !important;         /* half below the white band */
+  display:flex !important; gap:24px !important; z-index:5 !important;
+}
+
+/* Keep page content from colliding with overlapped buttons */
+main{ margin-top:140px !important; }
+
+/* Small screens: pull nav inside the band */
+@media (max-width: 900px){
+  header:has(nav) > div:first-child{ height:96px !important; }
+  header:has(nav) nav{ position:static !important; transform:none !important; bottom:auto !important; }
+  main{ margin-top:24px !important; }
+}
+/* ===== end fix ===== */
+/* ===== JENSEN /ui header override (leave login alone) ===== */
+/* Make the white band taller, brand left, nav centered & overlapping */
+
+header{
+  background:#fff !important;
+  border-bottom:1px solid #e6ebf2 !important;
+  position:sticky !important; top:0 !important; z-index:100 !important;
+}
+
+/* This is the white band row in your /ui header */
+header > div:first-child{
+  position:relative !important;
+  /* increase height: original ~108px; now ~160px (≈ +50%) */
+  height:160px !important;
+  max-width:1200px !important;
+  margin:0 auto !important;
+  padding:0 24px !important;
+
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;   /* keep brand left (like login) */
+  gap:24px !important;
+}
+
+/* Brand (logo + name) */
+header img.brand-logo{
+  height:68px !important; width:auto !important;
+  background:transparent !important; border-radius:0 !important;
+}
+header .brand-name{
+  color:#2d6cdf !important; font-weight:800 !important;
+  font-size:28px !important; line-height:1 !important; letter-spacing:.02em !important;
+  margin-left:12px !important;
+}
+
+/* Center the nav and make it hang ~50% below the band */
+header nav{
+  position:absolute !important;
+  left:50% !important; transform:translateX(-50%) !important;
+  bottom:-40px !important;                 /* half of ~80px button depth */
+  display:flex !important; gap:22px !important; z-index:5 !important;
+}
+
+/* Button look; keep as-is */
+header nav a.btn{
+  background:#2d6cdf !important; color:#fff !important;
+  padding:12px 26px !important; border-radius:12px !important;
+  font-weight:700 !important; text-decoration:none !important;
+  box-shadow:0 8px 18px rgba(45,108,223,.22) !important;
+  transition:transform .05s ease, filter .15s ease !important;
+}
+header nav a.btn:hover{ filter:brightness(1.06) !important; }
+header nav a.btn:active{ transform:translateY(1px) !important; }
+
+/* Push page content down so the overlapped buttons don't collide */
+main{ margin-top:180px !important; }
+
+/* Narrow screens: pull nav inside the band */
+@media (max-width: 900px){
+  header > div:first-child{ height:100px !important; }
+  header nav{ position:static !important; transform:none !important; bottom:auto !important; margin-left:auto !important; }
+  main{ margin-top:24px !important; }
+}
+/* ===== End JENSEN /ui header override ===== */
+
+/* === JENSEN /ui header — single white band, brand left, nav centered === */
+header{
+  background:#fff !important;
+  border-bottom:1px solid #e6ebf2 !important;
+  position:sticky !important; top:0 !important; z-index:100 !important;
+}
+/* the first row inside header (we gave it class="header-row") */
+header .header-row{
+  position:relative !important;
+  max-width:1200px !important;
+  margin:0 auto !important;
+  height:120px !important;              /* controls the band height */
+  padding:0 24px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important; /* brand left */
+  gap:20px !important;
+}
+/* logo + name (already in your HTML) */
+header img.brand-logo{ height:68px !important; width:auto !important; background:transparent !important; }
+header .brand-name{ font-weight:800 !important; letter-spacing:.02em !important; }
+/* nav centered, hanging ~half below band */
+header nav{
+  position:absolute !important;
+  left:50% !important; transform:translateX(-50%) !important;
+  bottom:-34px !important;              /* half-over the band */
+  display:flex !important; gap:22px !important;
+}
+main{ margin-top:120px !important; }    /* prevent overlap with buttons */
+
+
+/* ===== JENSEN hotfix: force logo & buttons (do not remove) ===== */
+.brand-logo{
+  height:64px !important;
+  margin-top:12px !important;   /* lowers the robot */
+  width:auto !important;
+  object-fit:contain !important;
+}
+.nav a,.btn{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  height:44px !important;        /* all chips equal height */
+  padding:0 16px !important;     /* horizontal space only */
+  white-space:nowrap !important; /* keep "Raw Logs" on one line */
+  border-radius:12px !important; /* consistent rounded look */
+  line-height:1 !important;      /* no extra vertical wobble */
+}
+
+/* ===== JENSEN final polish overrides (safe to keep) ===== */
+/* Remove header gradient/shadow (kills the “double white band”) */
+.header{
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Brand row spacing + logo alignment (keeps the robot a bit lower) */
+.brand{ justify-content: flex-start !important; gap: 12px !important; padding: 0 16px !important; }
+.brand-logo{
+  height: 64px !important;
+  margin-top: 8px !important;   /* adjust this 6–10px if you want tiny tweaks */
+  width: auto !important;
+  object-fit: contain !important;
+}
+
+/* Nav layout and button styles – no fixed height, no wrapping, sane padding */
+.nav{ display: flex !important; gap: 12px !important; align-items: center !important; }
+.nav a,.btn{
+  display: inline-block !important;
+  padding: 8px 16px !important;   /* normal chip size */
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  white-space: nowrap !important; /* keeps “Raw Logs” on one line */
+  line-height: 1.2 !important;    /* natural height, no forced tallness */
+}
+
+/* ===== JENSEN restore: single header stripe + uniform buttons ===== */
+/* Single clean header (no double band): solid white + 1px divider */
+.header{
+  background:#fff !important;
+  border-bottom:1px solid #e5e7eb !important;   /* the thin stripe */
+  box-shadow:0 2px 8px rgba(16,24,40,.06) !important; /* soft depth, optional */
+}
+
+/* Brand row spacing + logo position */
+.brand{ align-items:center !important; gap:12px !important; padding:12px 16px !important; }
+.brand-logo{
+  height:64px !important;
+  margin-top:6px !important;     /* tweak 4–10px later if you want */
+  width:auto !important; object-fit:contain !important;
+}
+
+/* Nav + buttons: same height, same paddings, no wrapping differences */
+.nav{ display:flex !important; gap:12px !important; align-items:center !important; }
+.nav a,.btn{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  height:44px !important;         /* locks the chip height */
+  padding:0 18px !important;      /* horizontal padding only */
+  white-space:nowrap !important;  /* "Raw Logs" stays on one line */
+  border:1px solid var(--border) !important;
+  border-radius:12px !important;
+  line-height:1 !important;
+}
+
+/* ===== JENSEN FINAL CLEAN HEADER + RESTORED BUTTONS ===== */
+
+/* Header: no thick white stripe, no fat band — just clean + subtle shadow */
+.header {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; /* tiny shadow for depth */
+  padding: 12px 24px !important;
+}
+
+/* Brand alignment + logo spacing */
+.brand {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+}
+.brand-logo {
+  height: 64px !important;
+  margin-top: 6px !important;  /* subtle drop */
+  width: auto !important;
+  object-fit: contain !important;
+}
+
+/* Buttons: restore proper shape + sizing */
+.nav {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+}
+.nav a, .btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 44px !important;
+  padding: 0 16px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #1f2937 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+/* ===== PHASE 8 POLISH v1 (last-wins, reversible) ===== */
+:root{
+  --ink:#0F172A;         /* slate-900 */
+  --muted:#475569;       /* slate-600 */
+  --bg:#F8FAFC;          /* slate-50 */
+  --card:#FFFFFF;
+  --brand:#2563EB;       /* blue-600 */
+  --line:#E5E7EB;        /* gray-200 */
+  --radius:14px;
+  --shadow:0 6px 18px rgba(15,23,42,.08);
+}
+
+/* Page background + base text */
+html,body{background:var(--bg);color:var(--ink);}
+
+/* Single clean header band */
+header,.header{
+  position:relative;
+  display:flex;align-items:center;justify-content:space-between;
+  height:72px;padding:0 20px;background:#fff !important;
+  border-bottom:1px solid var(--line);box-shadow:0 1px 0 rgba(0,0,0,.02);
+}
+
+/* Brand (left), fix logo and text alignment */
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-logo{height:48px;width:auto;object-fit:contain;margin:0 !important;}
+.brand-name,.brand span{font-size:24px;line-height:1;font-weight:800;letter-spacing:.3px;margin:0;}
+
+/* Center brand ONLY on login page */
+body.login .header{justify-content:center;}
+body.login .brand{justify-content:center;}
+
+/* Navigation: remove background stripes, make subtle modern buttons */
+.header nav{display:flex;align-items:center;gap:12px;background:transparent !important;}
+.header nav a{
+  display:inline-flex;align-items:center;justify-content:center;
+  height:44px;min-width:148px;padding:0 18px;
+  border:1px solid var(--line);border-radius:12px;
+  background:var(--brand);color:#fff;text-decoration:none;font-weight:700;
+  box-shadow:0 16px 28px -18px rgba(37,99,235,.35);
+  transition:transform .06s ease,filter .06s ease;
+}
+.header nav a:hover{filter:brightness(1.05);transform:translateY(-1px);}
+.header nav a:active{transform:translateY(0);}
+
+/* Main content spacing */
+main{margin:18px auto;max-width:980px;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+
+/* Remove any old decorative gradients/stripes that cause the double band */
+.header::before,.header::after, header::before, header::after{content:none !important;}
+/* ===== PHASE 8: NAV BUTTON SIZE ONLY (app pages) ===== */
+/* Controls:
+   --btn-pad-y : top/bottom padding (height perimeter)
+   --btn-pad-x : left/right padding
+   --btn-font  : font size used for nav labels
+   --btn-ch    : text width basis; set to the character length of the longest label ("Dashboard" = 9ch)
+*/
+.header nav{
+  --btn-pad-y:  8px;      /* distance from word to top/bottom (adjust if you want tighter/looser) */
+  --btn-pad-x:  20px;
+  --btn-font: 16px;
+  --btn-ch:  10ch;          /* longest label = "Dashboard" (~9 characters) */
+  --btn-w: calc(var(--btn-ch) + (2 * var(--btn-pad-x)));
+}
+
+/* Make every nav link the same width and height via padding (pill shape) */
+.header nav a{
+  display:inline-flex; align-items:center; justify-content:center;
+  width: var(--btn-w);
+  font-size: var(--btn-font);
+  padding: var(--btn-pad-y) var(--btn-pad-x);
+  line-height: 1.2;
+  border-radius: 9999px;  /* pill shape; size controlled ONLY by padding above */
+}
+
+/* Login page remains untouched; it hides nav in your CSS */
+/* ===== Match header nav buttons to the "Open Chat" button ===== */
+/* Uses the same visual parameters seen in theme: padding 12px 26px; radius 12px; brand blue; subtle shadow */
+.header nav a{
+  display:inline-flex; align-items:center; justify-content:center;
+  font-weight:700; line-height:1.2;
+  font-size:16px;
+  padding:12px 26px;                 /* same as Open Chat */
+  border-radius:12px;                 /* same roundedness */
+  background:#2d6cdf;                 /* brand blue used on Open Chat */
+  color:#fff; text-decoration:none;
+  border:1px solid #2d6cdf;
+  box-shadow:0 6px 14px rgba(45,108,223,0.18);   /* same shadow family */
+}
+
+/* Ensure any prior size rules don't fight this */
+.header nav a{ width:auto; min-width:unset; }     /* let text + padding define width */
+/* ===== Band attach + stripe kill (app pages only) ===== */
+header.header{                 /* single thin band */
+  position:relative;
+  height:64px;
+  background:#fff !important;
+  border-bottom:1px solid #e6ebf2 !important;
+  box-shadow:0 1px 0 rgba(0,0,0,.02);
+  padding:0 20px;
+}
+
+/* Place nav ON the band edge and overhang slightly for 3-D look */
+header.header nav.nav{
+  position:absolute; left:50%; bottom:-10px; transform:translateX(-50%);
+  display:flex; align-items:center; gap:16px;
+  background:transparent !important;       /* kill any background under nav */
+}
+
+/* Nuke any pseudo-element stripes from older CSS */
+header.header::before, header.header::after,
+header.header nav.nav::before, header.header nav.nav::after{
+  content:none !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+/* Give content room so pills/shadow never collide with the card */
+main{ margin-top:44px; }  /* 10px overhang + shadow clearance */

@@ -1,0 +1,8 @@
+{% extends "_base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Raw Logs</h2>
+    <pre style="min-height:400px;background:#f8fafc;border:1px solid #e5eaf0;border-radius:10px;padding:12px">{{ logs or "" }}</pre>
+    <form method="post" action="/ui/logs/reload"><button class="btn" type="submit">Reload</button></form>
+  </div>
+{% endblock %}

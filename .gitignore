@@ -1,0 +1,41 @@
+# ---- Jensen Agent Git Ignore ----
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtualenvs
+.venv/
+venv/
+
+# Local databases and volumes
+pgdata/
+data/
+backups/
+logs/
+
+# Secrets and env files
+.env
+.env.cloud
+.env.*
+secrets/
+
+# Snapshots / temp dirs
+_snap_*/
+_tmp_*/
+_to_delete.txt
+
+# OS/editor junk
+.DS_Store
+*.swp
+*.swo
+
+# Archive folders that shouldn't be versioned
+_archive/
+_archive_guards/
+
+# Local secrets & archives
+AWS/
+releases/*.tar.gz

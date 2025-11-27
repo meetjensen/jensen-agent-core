@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ title or "JENSEN" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="agent-token" content="{{ token|default('') }}">
+  <link rel="icon" href="/static/brand/jensen-method.png">
+  <link rel="stylesheet" href="/static/theme.css?v=phase8_final">
+    <link rel="stylesheet" href="/static/final.css?v=phase8_final">
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <div>
+        <img src="/static/brand/jensen-method.png" alt="brand" class="brand-logo" style="border-radius:4px">
+        <span><span class="brand-name">JENSEN</span></span>
+      </div>
+      <nav class="nav">
+        <a class="btn" href="/ui/">Dashboard</a>
+        <a class="btn" href="/ui/chat">Chat</a>
+        <a class="btn" href="/admin">Admin</a>
+        <a class="btn" href="/ui/logs">Raw Logs</a>
+        <a class="btn" href="/auth/logout">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width:980px;margin:28px auto;padding:0 16px">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
