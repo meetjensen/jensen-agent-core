@@ -261,3 +261,99 @@ def update_task_status_and_log_event(
     )
 
     return task, event
+
+
+def get_next_pending_platform_task(session: Session) -> Optional[Task]:
+    """
+    Fetch the next pending task owned by the platform.
+
+    This helper queries the tasks table for records where:
+    - owner = 'platform'
+    - status = 'pending'
+
+    The results are ordered by created_at ascending (oldest first),
+    and the first matching task is returned.
+
+    Parameters
+    ----------
+    session : Session
+        An existing SQLAlchemy session.
+
+    Returns
+    -------
+    Task | None
+        The next pending platform task, or None if no such tasks exist.
+    """
+    return (
+        session.query(Task)
+        .filter(Task.owner == "platform", Task.status == "pending")
+        .order_by(Task.created_at.asc())
+        .first()
+    )
+
+
+def mark_platform_task_handled_and_create_stub_event(
+    session: Session,
+    task: Task,
+) -> Tuple[Task, AgentEvent]:
+    """
+    Mark a platform task as handled and create a stub AgentEvent for tracking.
+
+    This helper is used by the Platform Engine to process platform-owned tasks.
+    It performs the following operations:
+    1. Updates the task status to 'handled'
+    2. Sets the task's updated_at timestamp
+    3. Creates a stub AgentEvent to record that the platform handled this task
+
+    Parameters
+    ----------
+    session : Session
+        An existing SQLAlchemy session.
+    task : Task
+        The Task instance to mark as handled. Must be a platform-owned task.
+
+    Returns
+    -------
+    Tuple[Task, AgentEvent]
+        A tuple containing:
+        - The updated Task instance (refreshed from database)
+        - The newly created AgentEvent instance
+
+    Notes
+    -----
+    This is a minimal stub implementation. In a full Platform Engine,
+    additional logic would process the task payload and perform actual work.
+    """
+    # Update task status to 'handled'
+    task.status = "handled"
+
+    # Update the updated_at timestamp
+    if hasattr(task, "updated_at"):
+        task.updated_at = func.now()
+
+    session.commit()
+    session.refresh(task)
+
+    # Create a stub AgentEvent to record the handling
+    summary = (
+        f"Platform Engine stub handled task {task.id} "
+        f"of type '{task.title}'"
+    )
+
+    event = log_agent_event(
+        session,
+        run_id=task.run_id,
+        task_id=task.id,
+        actor="platform",
+        event_type="platform_stub_handled",
+        summary=summary,
+        details={
+            "task_title": task.title,
+            "task_owner": task.owner,
+            "original_status": "pending",
+            "new_status": "handled",
+        },
+        step=None,
+    )
+
+    return task, event

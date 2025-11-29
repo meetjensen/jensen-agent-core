@@ -1,15 +1,11 @@
 """
-Engine interfaces for the Jensen agent core.
+Engines package for Jensen Core AI OS.
 
-This package currently exposes abstract skeletons only:
-- PlatformEngine
-- WorkflowEngine
-
-Concrete implementations and orchestrator wiring will be added
-in later Phase E tasks.
+This package contains engine implementations for various subsystems:
+- PlatformEngine: Handles platform-level tasks
+- WorkflowEngine: Handles workflow execution tasks (future)
 """
 
-from .platform_engine import PlatformEngine
-from .workflow_engine import WorkflowEngine
+from app.engines.platform_engine import PlatformEngine, DbPlatformEngine
 
-__all__ = ["PlatformEngine", "WorkflowEngine"]
+__all__ = ["PlatformEngine", "DbPlatformEngine"]
