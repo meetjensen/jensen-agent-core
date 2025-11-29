@@ -1,90 +1,119 @@
 """
-Minimal PlatformEngine implementation for Jensen Core AI OS.
+Platform Engine module for Jensen Core AI OS.
 
-This module provides a stub platform engine that:
-- Consumes pending platform-owned tasks from the database
-- Creates stub AgentEvents to record platform task handling
-- Does NOT execute real platform operations (that's for future phases)
-
-The engine follows the same minimal, DB-backed style as other core services.
+This module defines the abstract PlatformEngine interface and concrete implementations
+for processing platform-owned tasks.
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional
-from uuid import UUID
+from abc import ABC, abstractmethod
+from typing import Any, Optional, Dict
 
 from sqlalchemy.orm import Session
 
-from app.models.core_entities import AgentEvent, Task
-from app.services.core_runs import log_agent_event, update_task_status_and_log_event
+from app.services.core_runs import (
+    get_next_pending_platform_task,
+    mark_platform_task_handled_and_create_stub_event,
+)
 
 
-class DbPlatformEngine:
+class PlatformEngine(ABC):
     """
-    Minimal platform engine that handles platform-owned tasks.
+    Abstract base class for Platform Engine implementations.
 
-    This is a stub implementation. It accepts platform tasks from the database,
-    marks them as handled, and creates stub AgentEvents indicating the task
-    was "seen" or "handled".
+    The Platform Engine is responsible for consuming and processing tasks
+    that are owned by the platform (as opposed to workflow-owned tasks).
+    """
 
-    No actual platform operations occur in this phase.
+    @abstractmethod
+    def process_next_task(self) -> Optional[Dict[str, Any]]:
+        """
+        Process the next pending platform task.
+
+        This method should:
+        1. Find the next unhandled platform task
+        2. Process it (mark as handled, create events, etc.)
+        3. Return a summary of what was done
+
+        Returns
+        -------
+        Dict[str, Any] | None
+            A dictionary containing summary information about the processed task,
+            or None if no tasks were available to process.
+
+            Expected keys in the result dictionary:
+            - task_id: UUID of the processed task
+            - task_title: Title of the task
+            - status: New status of the task
+            - event_id: UUID of the created AgentEvent
+            - message: Human-readable summary message
+        """
+        pass
+
+
+class DbPlatformEngine(PlatformEngine):
+    """
+    Database-backed concrete implementation of PlatformEngine.
+
+    This implementation uses the core_runs service helpers to:
+    - Query for pending platform tasks from the database
+    - Mark them as handled
+    - Create stub AgentEvent records for audit/tracking
+
+    Parameters
+    ----------
+    session : Session
+        An active SQLAlchemy database session.
     """
 
     def __init__(self, session: Session):
         """
-        Initialize the platform engine with a database session.
+        Initialize the DbPlatformEngine with a database session.
 
         Parameters
         ----------
         session : Session
-            An active SQLAlchemy session for database operations.
+            An active SQLAlchemy database session.
         """
         self.session = session
 
-    def consume_task(
-        self,
-        *,
-        task: Task,
-        actor: str = "platform_engine",
-    ) -> AgentEvent:
+    def process_next_task(self) -> Optional[Dict[str, Any]]:
         """
-        Consume a platform task and log a stub event.
+        Process the next pending platform task from the database.
 
-        This method represents the "handling" of a platform task.
-        For this stub implementation, it:
-        1. Marks the task as 'in_progress' or 'completed'
-        2. Logs a stub AgentEvent of type 'platform_stub_handled'
-
-        No actual platform operations happen.
-
-        Parameters
-        ----------
-        task : Task
-            The Task instance to consume.
-        actor : str, default 'platform_engine'
-            The actor name to record in the AgentEvent.
+        This implementation:
+        1. Fetches the next task where owner='platform' and status='pending'
+        2. Marks it as 'handled' and creates a stub AgentEvent
+        3. Returns a summary dictionary
 
         Returns
         -------
-        AgentEvent
-            The logged stub event.
+        Dict[str, Any] | None
+            Summary of the processed task, or None if no pending tasks exist.
         """
-        # Update task status and log event
-        summary = f"Platform task '{task.title}' handled (stub implementation)"
+        # Step 1: Fetch the next pending platform task
+        task = get_next_pending_platform_task(self.session)
 
-        _, event = update_task_status_and_log_event(
-            self.session,
-            task_id=task.id,
-            new_status="completed",
-            actor=actor,
-            event_type="platform_stub_handled",
-            summary=summary,
-            details={
-                "task_title": task.title,
-                "task_owner": task.owner,
-                "phase": "E7",
-                "stub": True,
-            },
+        if task is None:
+            # No pending tasks available
+            return None
+
+        # Step 2: Mark task as handled and create stub event
+        updated_task, event = mark_platform_task_handled_and_create_stub_event(
+            self.session, task
         )
 
-        return event
+        # Step 3: Build and return summary
+        summary = {
+            "task_id": str(updated_task.id),
+            "task_title": updated_task.title,
+            "status": updated_task.status,
+            "event_id": str(event.id),
+            "message": (
+                f"Platform Engine stub handled task {updated_task.id} "
+                f"of type '{updated_task.title}'"
+            ),
+        }
+
+        return summary
