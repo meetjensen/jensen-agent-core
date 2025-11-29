@@ -185,6 +185,66 @@ def log_agent_event(
     return event
 
 
+def log_workflow_event(
+    session: Session,
+    *,
+    run_id: Any,
+    workflow_id: str,
+    event_type: str,
+    summary: str,
+    task_id: Optional[Any] = None,
+    details: Any = None,
+    actor: str = "workflow_engine",
+) -> AgentEvent:
+    """
+    Convenience helper to log workflow-related AgentEvents.
+
+    This is a wrapper around log_agent_event(...) that provides
+    workflow-specific defaults and ensures consistent actor naming.
+
+    Parameters
+    ----------
+    session : Session
+        An existing SQLAlchemy session.
+    run_id : Any
+        UUID (or compatible type) of the Run.
+    workflow_id : str
+        Identifier of the workflow this event relates to.
+    event_type : str
+        Logical type of the workflow event
+        (e.g., 'workflow_stub_planned', 'workflow_step_started').
+    summary : str
+        Short human-readable summary of the event.
+    task_id : Any | None
+        Optional UUID of an associated Task.
+    details : Any
+        Optional JSON-serializable details. If provided, will be merged
+        with a default 'workflow_id' field.
+    actor : str, default 'workflow_engine'
+        The actor producing this event.
+
+    Returns
+    -------
+    AgentEvent
+        The newly created AgentEvent instance.
+    """
+    # Ensure workflow_id is in the details
+    event_details = details if details is not None else {}
+    if isinstance(event_details, dict):
+        event_details.setdefault("workflow_id", workflow_id)
+
+    return log_agent_event(
+        session,
+        run_id=run_id,
+        task_id=task_id,
+        actor=actor,
+        event_type=event_type,
+        summary=summary,
+        details=event_details,
+        step=None,
+    )
+
+
 def get_task_by_id(session: Session, task_id: Any) -> Optional[Task]:
     """
     Fetch a Task by its primary key.
