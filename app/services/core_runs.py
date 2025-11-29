@@ -321,3 +321,133 @@ def update_task_status_and_log_event(
     )
 
     return task, event
+
+
+def log_workflow_step_event(
+    session: Session,
+    *,
+    run_id: Any,
+    task_id: Any,
+    workflow_id: str,
+    step_id: str,
+    step_index: int,
+    step_type: str,
+    summary: str,
+    details: Optional[dict] = None,
+    actor: str = "workflow_engine",
+) -> AgentEvent:
+    """
+    Convenience helper to log workflow step execution events.
+
+    This is a specialized wrapper around log_agent_event(...) for logging
+    individual workflow step executions.
+
+    Parameters
+    ----------
+    session : Session
+        An existing SQLAlchemy session.
+    run_id : Any
+        UUID (or compatible type) of the Run.
+    task_id : Any
+        UUID (or compatible type) of the Task.
+    workflow_id : str
+        Identifier of the workflow.
+    step_id : str
+        Identifier of the workflow step.
+    step_index : int
+        Zero-based index of the step in the workflow.
+    step_type : str
+        Type of the step (e.g., 'noop', 'agent_action').
+    summary : str
+        Short human-readable summary of the step execution.
+    details : dict | None
+        Optional JSON-serializable details. Will be merged with default
+        step metadata.
+    actor : str, default 'workflow_engine'
+        The actor producing this event.
+
+    Returns
+    -------
+    AgentEvent
+        The newly created AgentEvent instance.
+    """
+    # Build details with step metadata
+    event_details = details if details is not None else {}
+    if isinstance(event_details, dict):
+        event_details.setdefault("workflow_id", workflow_id)
+        event_details.setdefault("step_id", step_id)
+        event_details.setdefault("step_index", step_index)
+        event_details.setdefault("step_type", step_type)
+
+    return log_agent_event(
+        session,
+        run_id=run_id,
+        task_id=task_id,
+        actor=actor,
+        event_type=f"workflow_step_{step_type}",
+        summary=summary,
+        details=event_details,
+        step=step_index,
+    )
+
+
+def mark_workflow_task_completed(
+    session: Session,
+    *,
+    task_id: Any,
+    workflow_id: str,
+    steps_executed: int,
+    result_ref: Optional[str] = None,
+    actor: str = "workflow_engine",
+) -> Tuple[Task, AgentEvent]:
+    """
+    Mark a workflow task as completed and log a completion event.
+
+    This is a convenience wrapper around update_task_status_and_log_event(...)
+    specifically for workflow task completion.
+
+    Parameters
+    ----------
+    session : Session
+        An existing SQLAlchemy session.
+    task_id : Any
+        UUID (or compatible type) of the Task to complete.
+    workflow_id : str
+        Identifier of the workflow that was executed.
+    steps_executed : int
+        Number of steps successfully executed.
+    result_ref : str | None
+        Optional reference to a result artifact.
+    actor : str, default 'workflow_engine'
+        The actor completing the task.
+
+    Returns
+    -------
+    Tuple[Task, AgentEvent]
+        A tuple of (updated_task, completion_event).
+
+    Raises
+    ------
+    ValueError
+        If task not found.
+    """
+    summary = f"Workflow task completed ({steps_executed} steps executed)"
+
+    details = {
+        "workflow_id": workflow_id,
+        "steps_executed": steps_executed,
+        "status": "completed",
+    }
+    if result_ref is not None:
+        details["result_ref"] = result_ref
+
+    return update_task_status_and_log_event(
+        session,
+        task_id=task_id,
+        new_status="completed",
+        result_ref=result_ref,
+        actor=actor,
+        event_type="workflow_task_completed",
+        summary=summary,
+        details=details,
+    )
