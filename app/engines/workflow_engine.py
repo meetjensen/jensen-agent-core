@@ -15,8 +15,14 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models.core_entities import AgentEvent, Run
-from app.services.core_runs import log_agent_event
+from app.models.core_entities import AgentEvent, Run, Task
+from app.services.core_runs import (
+    log_agent_event,
+    create_workflow_plan,
+    create_workflow_step_task,
+    log_workflow_planned,
+    get_task_by_id,
+)
 from app.workflows.loader import load_workflow_definition
 
 
@@ -50,17 +56,19 @@ class DbWorkflowEngine:
         workflow_id: Optional[str] = None,
         workflow_definition: Optional[dict[str, Any]] = None,
         actor: str = "workflow_engine",
-    ) -> tuple[dict[str, Any], AgentEvent]:
+    ) -> tuple[dict[str, Any], list[Task], AgentEvent]:
         """
-        Create an in-memory plan for a workflow and log a stub event.
+        Create a database-backed plan for a workflow and generate step tasks.
 
         This method represents the "planning" phase of workflow execution.
-        For Phase E6, it:
+        For Phase E8.B, it:
         1. Loads or uses the provided workflow definition
-        2. Creates a minimal in-memory plan structure
-        3. Logs a stub AgentEvent of type 'workflow_stub_planned'
+        2. Checks if the workflow is already planned (idempotent)
+        3. Creates a plan record in the database
+        4. Creates tasks for each workflow step
+        5. Logs a workflow_planned event
 
-        No actual execution happens.
+        No actual execution happens here - that's handled elsewhere.
 
         Parameters
         ----------
@@ -77,10 +85,11 @@ class DbWorkflowEngine:
 
         Returns
         -------
-        tuple[dict[str, Any], AgentEvent]
-            A tuple of (plan_dict, agent_event).
-            - plan_dict: The in-memory plan structure
-            - agent_event: The logged stub event
+        tuple[dict[str, Any], list[Task], AgentEvent]
+            A tuple of (plan_summary, step_tasks, agent_event).
+            - plan_summary: Dict with workflow metadata
+            - step_tasks: List of created Task instances for each step
+            - agent_event: The logged workflow_planned event
 
         Raises
         ------
@@ -99,42 +108,101 @@ class DbWorkflowEngine:
                 "Must provide either workflow_id or workflow_definition"
             )
 
-        # Create a minimal in-memory plan
-        plan = {
-            "workflow_id": wf_def.get("id", "unknown"),
-            "workflow_name": wf_def.get("name", "Unnamed Workflow"),
-            "steps": wf_def.get("steps", []),
-            "status": "planned",
-            "run_id": str(run_id),
-        }
+        wf_id = wf_def.get("id", "unknown")
+        wf_name = wf_def.get("name", "Unnamed Workflow")
+        steps = wf_def.get("steps", [])
+        step_count = len(steps)
 
-        # Store in memory (ephemeral, for this session only)
-        plan_key = f"{run_id}:{plan['workflow_id']}"
-        self._in_memory_plans[plan_key] = plan
-
-        # Log a stub event to the database
-        summary = (
-            f"Workflow '{plan['workflow_name']}' planned "
-            f"(stub implementation, {len(plan['steps'])} steps)"
+        # Check for idempotency: look for existing plan task
+        existing_plan = (
+            self.session.query(Task)
+            .filter(
+                Task.run_id == run_id,
+                Task.owner == "workflow",
+                Task.payload["is_plan"].astext == "true",
+                Task.payload["workflow_id"].astext == wf_id,
+            )
+            .first()
         )
 
-        event = log_agent_event(
+        if existing_plan:
+            # Workflow already planned, return existing plan
+            existing_step_tasks = (
+                self.session.query(Task)
+                .filter(
+                    Task.run_id == run_id,
+                    Task.owner == "workflow",
+                    Task.payload["plan_task_id"].astext == str(existing_plan.id),
+                )
+                .all()
+            )
+
+            # Get the original planning event
+            existing_event = (
+                self.session.query(AgentEvent)
+                .filter(
+                    AgentEvent.run_id == run_id,
+                    AgentEvent.task_id == existing_plan.id,
+                    AgentEvent.event_type == "workflow_planned",
+                )
+                .first()
+            )
+
+            plan_summary = {
+                "workflow_id": wf_id,
+                "workflow_name": wf_name,
+                "step_count": step_count,
+                "status": "already_planned",
+                "run_id": str(run_id),
+                "plan_task_id": str(existing_plan.id),
+            }
+
+            return plan_summary, existing_step_tasks, existing_event
+
+        # Create the plan record
+        plan_task = create_workflow_plan(
             self.session,
             run_id=run_id,
-            actor=actor,
-            event_type="workflow_stub_planned",
-            summary=summary,
-            details={
-                "workflow_id": plan["workflow_id"],
-                "workflow_name": plan["workflow_name"],
-                "step_count": len(plan["steps"]),
-                "phase": "E6",
-            },
-            task_id=None,
-            step=None,
+            workflow_id=wf_id,
+            workflow_name=wf_name,
+            step_count=step_count,
         )
 
-        return plan, event
+        # Create tasks for each workflow step
+        step_tasks = []
+        for idx, step_def in enumerate(steps):
+            step_task = create_workflow_step_task(
+                self.session,
+                run_id=run_id,
+                workflow_id=wf_id,
+                step_definition=step_def,
+                step_index=idx,
+                plan_task_id=plan_task.id,
+            )
+            step_tasks.append(step_task)
+
+        # Log the workflow_planned event
+        event = log_workflow_planned(
+            self.session,
+            run_id=run_id,
+            workflow_id=wf_id,
+            workflow_name=wf_name,
+            step_count=step_count,
+            plan_task_id=plan_task.id,
+            actor=actor,
+        )
+
+        # Create plan summary
+        plan_summary = {
+            "workflow_id": wf_id,
+            "workflow_name": wf_name,
+            "step_count": step_count,
+            "status": "planned",
+            "run_id": str(run_id),
+            "plan_task_id": str(plan_task.id),
+        }
+
+        return plan_summary, step_tasks, event
 
     def get_plan(self, run_id: UUID | Any, workflow_id: str) -> Optional[dict[str, Any]]:
         """

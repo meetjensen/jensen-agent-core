@@ -245,6 +245,173 @@ def log_workflow_event(
     )
 
 
+def create_workflow_plan(
+    session: Session,
+    *,
+    run_id: Any,
+    workflow_id: str,
+    workflow_name: str,
+    step_count: int,
+) -> Task:
+    """
+    Create a workflow plan record as a Task.
+
+    This creates a special task that represents the workflow plan itself.
+    It's used to track the overall planning state and can be referenced
+    by individual workflow step tasks.
+
+    Parameters
+    ----------
+    session : Session
+        An existing SQLAlchemy session.
+    run_id : Any
+        UUID (or compatible type) of the Run this plan belongs to.
+    workflow_id : str
+        Identifier of the workflow being planned.
+    workflow_name : str
+        Human-readable name of the workflow.
+    step_count : int
+        Number of steps in the workflow.
+
+    Returns
+    -------
+    Task
+        The newly created workflow plan Task instance.
+    """
+    plan_task = create_task(
+        session,
+        run_id=run_id,
+        owner="workflow",
+        title=f"Plan: {workflow_name}",
+        payload={
+            "workflow_id": workflow_id,
+            "workflow_name": workflow_name,
+            "step_count": step_count,
+            "is_plan": True,
+        },
+        priority="normal",
+        status="completed",
+        result_ref=None,
+    )
+
+    return plan_task
+
+
+def create_workflow_step_task(
+    session: Session,
+    *,
+    run_id: Any,
+    workflow_id: str,
+    step_definition: dict[str, Any],
+    step_index: int,
+    plan_task_id: Optional[Any] = None,
+) -> Task:
+    """
+    Create a Task for a single workflow step.
+
+    Each step task has owner="workflow" and contains the step definition
+    in its payload, allowing the workflow engine to execute it later.
+
+    Parameters
+    ----------
+    session : Session
+        An existing SQLAlchemy session.
+    run_id : Any
+        UUID (or compatible type) of the Run this step belongs to.
+    workflow_id : str
+        Identifier of the workflow this step belongs to.
+    step_definition : dict[str, Any]
+        The step definition from the workflow (contains step details).
+    step_index : int
+        The 0-based index of this step in the workflow.
+    plan_task_id : Any | None
+        Optional UUID of the plan task that generated this step task.
+
+    Returns
+    -------
+    Task
+        The newly created workflow step Task instance.
+    """
+    step_title = step_definition.get("name", f"Step {step_index + 1}")
+
+    step_task = create_task(
+        session,
+        run_id=run_id,
+        owner="workflow",
+        title=f"{workflow_id} - {step_title}",
+        payload={
+            "workflow_id": workflow_id,
+            "workflow_definition": step_definition,
+            "step_index": step_index,
+            "plan_task_id": str(plan_task_id) if plan_task_id else None,
+        },
+        priority="normal",
+        status="pending",
+        result_ref=None,
+    )
+
+    return step_task
+
+
+def log_workflow_planned(
+    session: Session,
+    *,
+    run_id: Any,
+    workflow_id: str,
+    workflow_name: str,
+    step_count: int,
+    plan_task_id: Optional[Any] = None,
+    actor: str = "workflow_engine",
+) -> AgentEvent:
+    """
+    Log a workflow_planned event.
+
+    This event indicates that a workflow has been successfully planned
+    and its step tasks have been created.
+
+    Parameters
+    ----------
+    session : Session
+        An existing SQLAlchemy session.
+    run_id : Any
+        UUID (or compatible type) of the Run.
+    workflow_id : str
+        Identifier of the workflow that was planned.
+    workflow_name : str
+        Human-readable name of the workflow.
+    step_count : int
+        Number of steps that were created for this workflow.
+    plan_task_id : Any | None
+        Optional UUID of the plan task.
+    actor : str, default 'workflow_engine'
+        The actor who planned the workflow.
+
+    Returns
+    -------
+    AgentEvent
+        The newly created workflow_planned event.
+    """
+    summary = (
+        f"Workflow '{workflow_name}' planned with {step_count} step(s)"
+    )
+
+    return log_workflow_event(
+        session,
+        run_id=run_id,
+        workflow_id=workflow_id,
+        event_type="workflow_planned",
+        summary=summary,
+        task_id=plan_task_id,
+        details={
+            "workflow_id": workflow_id,
+            "workflow_name": workflow_name,
+            "step_count": step_count,
+            "phase": "E8.B",
+        },
+        actor=actor,
+    )
+
+
 def get_task_by_id(session: Session, task_id: Any) -> Optional[Task]:
     """
     Fetch a Task by its primary key.
