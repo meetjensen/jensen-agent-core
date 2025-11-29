@@ -1,97 +1,119 @@
+"""
+Platform Engine module for Jensen Core AI OS.
+
+This module defines the abstract PlatformEngine interface and concrete implementations
+for processing platform-owned tasks.
+"""
+
 from __future__ import annotations
 
-import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Optional, Dict
+
+from sqlalchemy.orm import Session
+
+from app.services.core_runs import (
+    get_next_pending_platform_task,
+    mark_platform_task_handled_and_create_stub_event,
+)
 
 
 class PlatformEngine(ABC):
     """
-    Abstract interface for platform-level reasoning and planning.
+    Abstract base class for Platform Engine implementations.
 
-    Responsibilities:
-    - Describe platform and integration capabilities.
-    - Decide whether a given platform task type can be handled.
-    - Produce structured platform task plans (no execution).
-    - Explain those plans in a human-readable way.
-
-    Phase E NOTE:
-    This is a skeleton only. It MUST NOT perform any I/O, DB operations,
-    orchestration, or LLM calls.
+    The Platform Engine is responsible for consuming and processing tasks
+    that are owned by the platform (as opposed to workflow-owned tasks).
     """
 
-    def __init__(
-        self,
-        config: Optional[Dict[str, Any]] = None,
-        logger: Optional[logging.Logger] = None,
-    ) -> None:
+    @abstractmethod
+    def process_next_task(self) -> Optional[Dict[str, Any]]:
         """
-        Initialize the platform engine with optional configuration and logger.
+        Process the next pending platform task.
 
-        :param config: Arbitrary configuration values for this engine.
-        :param logger: Optional logger; if not provided, a class-level logger
-                       will be created.
+        This method should:
+        1. Find the next unhandled platform task
+        2. Process it (mark as handled, create events, etc.)
+        3. Return a summary of what was done
+
+        Returns
+        -------
+        Dict[str, Any] | None
+            A dictionary containing summary information about the processed task,
+            or None if no tasks were available to process.
+
+            Expected keys in the result dictionary:
+            - task_id: UUID of the processed task
+            - task_title: Title of the task
+            - status: New status of the task
+            - event_id: UUID of the created AgentEvent
+            - message: Human-readable summary message
         """
-        self.config: Dict[str, Any] = config or {}
-        self.logger: logging.Logger = logger or logging.getLogger(
-            self.__class__.__name__
+        pass
+
+
+class DbPlatformEngine(PlatformEngine):
+    """
+    Database-backed concrete implementation of PlatformEngine.
+
+    This implementation uses the core_runs service helpers to:
+    - Query for pending platform tasks from the database
+    - Mark them as handled
+    - Create stub AgentEvent records for audit/tracking
+
+    Parameters
+    ----------
+    session : Session
+        An active SQLAlchemy database session.
+    """
+
+    def __init__(self, session: Session):
+        """
+        Initialize the DbPlatformEngine with a database session.
+
+        Parameters
+        ----------
+        session : Session
+            An active SQLAlchemy database session.
+        """
+        self.session = session
+
+    def process_next_task(self) -> Optional[Dict[str, Any]]:
+        """
+        Process the next pending platform task from the database.
+
+        This implementation:
+        1. Fetches the next task where owner='platform' and status='pending'
+        2. Marks it as 'handled' and creates a stub AgentEvent
+        3. Returns a summary dictionary
+
+        Returns
+        -------
+        Dict[str, Any] | None
+            Summary of the processed task, or None if no pending tasks exist.
+        """
+        # Step 1: Fetch the next pending platform task
+        task = get_next_pending_platform_task(self.session)
+
+        if task is None:
+            # No pending tasks available
+            return None
+
+        # Step 2: Mark task as handled and create stub event
+        updated_task, event = mark_platform_task_handled_and_create_stub_event(
+            self.session, task
         )
 
-    @abstractmethod
-    def describe_capabilities(self) -> Dict[str, Any]:
-        """
-        Return a structured description of what this engine can handle.
+        # Step 3: Build and return summary
+        summary = {
+            "task_id": str(updated_task.id),
+            "task_title": updated_task.title,
+            "status": updated_task.status,
+            "event_id": str(event.id),
+            "message": (
+                f"Platform Engine stub handled task {updated_task.id} "
+                f"of type '{updated_task.title}'"
+            ),
+        }
 
-        The dictionary should be machine-readable and include:
-        - Supported platform task types.
-        - Integration families and feature flags.
-        - Relevant configuration knobs at the engine boundary.
-
-        This method MUST NOT perform any side effects.
-        """
-        raise NotImplementedError("PlatformEngine.describe_capabilities() not implemented")
-
-    @abstractmethod
-    def can_handle_task(
-        self,
-        task_type: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> bool:
-        """
-        Indicate whether this engine can handle the given platform task type.
-
-        :param task_type: Logical task type identifier
-                          (e.g. 'design_llm_gateway', 'setup_observability').
-        :param metadata:  Optional additional context about the task.
-        :return:          True if this engine should be considered for the task.
-        """
-        raise NotImplementedError("PlatformEngine.can_handle_task() not implemented")
-
-    @abstractmethod
-    def plan_task(
-        self,
-        task_type: str,
-        input_payload: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """
-        Produce a structured plan for the given platform task.
-
-        Converts an abstract task description into a plan object that may include:
-        - Proposed sub-steps.
-        - Required integrations or components.
-        - Expected outputs and intermediate artifacts.
-
-        IMPORTANT:
-        - The plan is descriptive only; no execution or I/O must occur here.
-        """
-        raise NotImplementedError("PlatformEngine.plan_task() not implemented")
-
-    @abstractmethod
-    def explain_plan(self, plan: Dict[str, Any]) -> str:
-        """
-        Convert a structured plan into a human-readable explanation.
-
-        :param plan: The plan dictionary produced by `plan_task`.
-        :return:     A string suitable for logging or Operator-facing UI.
-        """
-        raise NotImplementedError("PlatformEngine.explain_plan() not implemented")
+        return summary
