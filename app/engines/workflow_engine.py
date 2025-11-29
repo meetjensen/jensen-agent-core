@@ -1,98 +1,167 @@
+"""
+Minimal WorkflowEngine implementation for Jensen Core AI OS (Phase E6).
+
+This module provides a stub workflow engine that:
+- Accepts workflow identifiers or pre-loaded workflow definitions
+- Creates stub AgentEvents to record workflow planning
+- Does NOT execute real workflows (that's for future phases)
+
+The engine follows the same minimal, DB-backed style as other core services.
+"""
 from __future__ import annotations
 
-import logging
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Optional
+from uuid import UUID
+
+from sqlalchemy.orm import Session
+
+from app.models.core_entities import AgentEvent, Run
+from app.services.core_runs import log_agent_event
+from app.workflows.loader import load_workflow_definition
 
 
-class WorkflowEngine(ABC):
+class DbWorkflowEngine:
     """
-    Abstract interface for workflow-level reasoning and planning.
+    Minimal workflow engine that logs workflow planning events to the database.
 
-    Responsibilities:
-    - Describe workflow / intent families supported by this engine.
-    - Decide whether a given workflow intent can be handled.
-    - Produce structured workflow blueprints (no execution).
-    - Explain those blueprints in a human-readable way.
+    This is a Phase E6 stub implementation. It accepts workflow identifiers or
+    definitions, optionally loads them via the workflow loader, and creates
+    stub AgentEvents indicating the workflow was "seen" or "planned".
 
-    Phase E NOTE:
-    This is a skeleton only. It MUST NOT perform any I/O, DB operations,
-    orchestration, or LLM calls.
+    No actual workflow execution occurs in this phase.
     """
 
-    def __init__(
+    def __init__(self, session: Session):
+        """
+        Initialize the workflow engine with a database session.
+
+        Parameters
+        ----------
+        session : Session
+            An active SQLAlchemy session for database operations.
+        """
+        self.session = session
+        self._in_memory_plans: dict[str, Any] = {}
+
+    def plan_workflow(
         self,
-        config: Optional[Dict[str, Any]] = None,
-        logger: Optional[logging.Logger] = None,
-    ) -> None:
+        *,
+        run_id: UUID | Any,
+        workflow_id: Optional[str] = None,
+        workflow_definition: Optional[dict[str, Any]] = None,
+        actor: str = "workflow_engine",
+    ) -> tuple[dict[str, Any], AgentEvent]:
         """
-        Initialize the workflow engine with optional configuration and logger.
+        Create an in-memory plan for a workflow and log a stub event.
 
-        :param config: Arbitrary configuration values for this engine.
-        :param logger: Optional logger; if not provided, a class-level logger
-                       will be created.
+        This method represents the "planning" phase of workflow execution.
+        For Phase E6, it:
+        1. Loads or uses the provided workflow definition
+        2. Creates a minimal in-memory plan structure
+        3. Logs a stub AgentEvent of type 'workflow_stub_planned'
+
+        No actual execution happens.
+
+        Parameters
+        ----------
+        run_id : UUID | Any
+            The ID of the Run this workflow belongs to.
+        workflow_id : str | None
+            Identifier to load the workflow definition via the loader.
+            Either this or workflow_definition must be provided.
+        workflow_definition : dict[str, Any] | None
+            Pre-loaded workflow definition dict.
+            If provided, workflow_id is ignored.
+        actor : str, default 'workflow_engine'
+            The actor name to record in the AgentEvent.
+
+        Returns
+        -------
+        tuple[dict[str, Any], AgentEvent]
+            A tuple of (plan_dict, agent_event).
+            - plan_dict: The in-memory plan structure
+            - agent_event: The logged stub event
+
+        Raises
+        ------
+        ValueError
+            If neither workflow_id nor workflow_definition is provided.
         """
-        self.config: Dict[str, Any] = config or {}
-        self.logger: logging.Logger = logger or logging.getLogger(
-            self.__class__.__name__
+        # Resolve the workflow definition
+        if workflow_definition is not None:
+            wf_def = workflow_definition
+        elif workflow_id is not None:
+            wf_def = load_workflow_definition(workflow_id)
+            if wf_def is None:
+                raise ValueError(f"Could not load workflow: {workflow_id}")
+        else:
+            raise ValueError(
+                "Must provide either workflow_id or workflow_definition"
+            )
+
+        # Create a minimal in-memory plan
+        plan = {
+            "workflow_id": wf_def.get("id", "unknown"),
+            "workflow_name": wf_def.get("name", "Unnamed Workflow"),
+            "steps": wf_def.get("steps", []),
+            "status": "planned",
+            "run_id": str(run_id),
+        }
+
+        # Store in memory (ephemeral, for this session only)
+        plan_key = f"{run_id}:{plan['workflow_id']}"
+        self._in_memory_plans[plan_key] = plan
+
+        # Log a stub event to the database
+        summary = (
+            f"Workflow '{plan['workflow_name']}' planned "
+            f"(stub implementation, {len(plan['steps'])} steps)"
         )
 
-    @abstractmethod
-    def describe_capabilities(self) -> Dict[str, Any]:
+        event = log_agent_event(
+            self.session,
+            run_id=run_id,
+            actor=actor,
+            event_type="workflow_stub_planned",
+            summary=summary,
+            details={
+                "workflow_id": plan["workflow_id"],
+                "workflow_name": plan["workflow_name"],
+                "step_count": len(plan["steps"]),
+                "phase": "E6",
+            },
+            task_id=None,
+            step=None,
+        )
+
+        return plan, event
+
+    def get_plan(self, run_id: UUID | Any, workflow_id: str) -> Optional[dict[str, Any]]:
         """
-        Return a structured description of supported workflow capabilities.
+        Retrieve an in-memory workflow plan if it exists.
 
-        The dictionary should be machine-readable and include:
-        - Supported workflow / intent families (e.g. 'email_assistant').
-        - Expected input structures.
-        - Expected output structures.
+        Parameters
+        ----------
+        run_id : UUID | Any
+            The Run ID.
+        workflow_id : str
+            The workflow identifier.
 
-        This method MUST NOT perform any side effects.
+        Returns
+        -------
+        dict[str, Any] | None
+            The plan dict if found, otherwise None.
         """
-        raise NotImplementedError("WorkflowEngine.describe_capabilities() not implemented")
+        plan_key = f"{run_id}:{workflow_id}"
+        return self._in_memory_plans.get(plan_key)
 
-    @abstractmethod
-    def can_handle_intent(
-        self,
-        intent_type: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> bool:
+    def list_plans(self) -> list[dict[str, Any]]:
         """
-        Indicate whether this engine can handle the given workflow intent type.
+        List all in-memory workflow plans.
 
-        :param intent_type: Logical workflow intent identifier
-                            (e.g. 'personal_email_v1', 'ncri_marketing_v1').
-        :param metadata:    Optional additional context about the intent.
-        :return:            True if this engine should be considered for the intent.
+        Returns
+        -------
+        list[dict[str, Any]]
+            A list of all currently stored plans.
         """
-        raise NotImplementedError("WorkflowEngine.can_handle_intent() not implemented")
-
-    @abstractmethod
-    def design_workflow(
-        self,
-        intent_type: str,
-        intent_payload: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """
-        Produce a structured workflow blueprint for the given intent.
-
-        The blueprint dictionary may include:
-        - A list of step definitions.
-        - Dependencies between steps.
-        - Expected inputs and outputs for each step.
-        - Optional flags for human review or checkpoints.
-
-        IMPORTANT:
-        - The blueprint is descriptive only; no execution or I/O must occur here.
-        """
-        raise NotImplementedError("WorkflowEngine.design_workflow() not implemented")
-
-    @abstractmethod
-    def explain_workflow(self, workflow_blueprint: Dict[str, Any]) -> str:
-        """
-        Convert a workflow blueprint into a human-readable explanation.
-
-        :param workflow_blueprint: The blueprint produced by `design_workflow`.
-        :return:                   A string suitable for logging or Operator-facing UI.
-        """
-        raise NotImplementedError("WorkflowEngine.explain_workflow() not implemented")
+        return list(self._in_memory_plans.values())
