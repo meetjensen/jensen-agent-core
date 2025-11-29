@@ -254,6 +254,39 @@ def get_task_by_id(session: Session, task_id: Any) -> Optional[Task]:
     return session.query(Task).filter(Task.id == task_id).first()
 
 
+def get_next_pending_task(
+    session: Session,
+    *,
+    owner: Optional[str] = None,
+) -> Optional[Task]:
+    """
+    Fetch the next pending task from the database.
+
+    Parameters
+    ----------
+    session : Session
+        An active SQLAlchemy session.
+    owner : str | None
+        If provided, filter tasks by owner (e.g., 'platform', 'workflow').
+        If None, return the next pending task regardless of owner.
+
+    Returns
+    -------
+    Task | None
+        The next pending task if found, otherwise None.
+        Tasks are ordered by created_at (oldest first).
+    """
+    query = session.query(Task).filter(Task.status == "pending")
+
+    if owner is not None:
+        query = query.filter(Task.owner == owner)
+
+    # Order by created_at to get oldest task first
+    query = query.order_by(Task.created_at)
+
+    return query.first()
+
+
 def update_task_status_and_log_event(
     session: Session,
     *,
