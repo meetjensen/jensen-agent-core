@@ -1,0 +1,18 @@
+id: "hello-world"
+name: "Hello World Workflow"
+description: "Simple example workflow to test the loader."
+
+metadata:
+  category: "example"
+
+steps:
+  - id: "step-1"
+    type: "log_message"
+    inputs:
+      message: "Hello, world!"
+    outputs: {}
+    metadata:
+      severity: "info"
+    tags:
+      - "example"
+      - "hello_world"
