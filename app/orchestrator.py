@@ -1,136 +1,161 @@
 """
-Minimal Orchestrator Dispatcher for Jensen Core AI OS (Phase E7).
+Minimal orchestrator for Jensen Core AI OS (Phase E8.A).
 
-This module provides a single-step orchestrator that:
-- Fetches at most ONE pending task from the database
-- Dispatches to the appropriate engine based on Task.owner
-- Returns a summary of the operation
+This module provides basic orchestration functionality that:
+- Dispatches pending tasks to appropriate engines based on owner
+- Supports workflow tasks (owner='workflow')
+- Returns execution summaries
 
-This is NOT a background scheduler or loop. It's a single-cycle dispatcher
-that can be called once to process one task.
+The orchestrator follows a simple dispatch pattern and uses core_runs helpers
+for all database operations.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.engines.platform_engine import DbPlatformEngine
-from app.engines.workflow_engine import DbWorkflowEngine
 from app.models.core_entities import Task
-from app.services.core_runs import get_next_pending_task
+from app.engines.workflow_engine import DbWorkflowEngine
+from app.services.core_runs import log_agent_event
 
 
-def orchestrate_single_cycle(session: Session) -> Dict[str, Any]:
+def orchestrate_single_cycle(
+    session: Session,
+    *,
+    run_id: Optional[UUID | Any] = None,
+    actor: str = "orchestrator",
+) -> dict[str, Any]:
     """
-    Process at most ONE pending task from the database.
+    Execute a single orchestration cycle.
 
-    This is the main orchestrator entry point for Phase E7. It:
-    1. Fetches the next pending task (any owner)
-    2. Determines which engine to use based on Task.owner
-    3. Delegates to the appropriate engine method
-    4. Returns a summary dict
+    This function:
+    1. Finds the first pending task (optionally filtered by run_id)
+    2. Dispatches the task to the appropriate engine based on owner
+    3. Returns a summary of the dispatch/execution
 
-    If no tasks are pending, returns a summary indicating "no work".
+    For Phase E8.A, only workflow tasks (owner='workflow') are supported.
 
     Parameters
     ----------
     session : Session
         An active SQLAlchemy session for database operations.
+    run_id : UUID | Any | None
+        Optional Run ID to filter tasks. If None, processes any pending task.
+    actor : str, default 'orchestrator'
+        The actor name to record in events.
 
     Returns
     -------
-    dict
-        A summary dictionary with keys:
-        - status: "no_work" | "dispatched"
-        - task_id: UUID of the task (if dispatched)
-        - owner: "platform" | "workflow" (if dispatched)
-        - event_type: The type of event logged (if dispatched)
-        - summary: Human-readable summary message
+    dict[str, Any]
+        A summary dict containing:
+        - status: 'dispatched', 'no_tasks', or 'error'
+        - owner: The task owner (if dispatched)
+        - task_id: The task ID (if dispatched)
+        - Additional fields depend on the engine that executed the task
 
     Examples
     --------
-    >>> from sqlalchemy.orm import Session
-    >>> summary = orchestrate_single_cycle(session)
-    >>> print(summary)
-    {'status': 'no_work', 'summary': 'No pending tasks found'}
-
-    >>> # When a task exists:
-    >>> summary = orchestrate_single_cycle(session)
-    >>> print(summary)
-    {
-        'status': 'dispatched',
-        'task_id': '123e4567-e89b-12d3-a456-426614174000',
-        'owner': 'platform',
-        'event_type': 'platform_stub_handled',
-        'summary': 'Dispatched platform task to DbPlatformEngine'
-    }
+    >>> from app._db import get_session
+    >>> session = next(get_session())
+    >>> result = orchestrate_single_cycle(session)
+    >>> print(result)
+    {'status': 'dispatched', 'owner': 'workflow', 'task_id': '...', ...}
     """
-    # Try to fetch ONE pending task (any owner)
-    task = get_next_pending_task(session, owner=None)
+    # Find the first pending task
+    query = session.query(Task).filter(Task.status == "pending")
+    if run_id is not None:
+        query = query.filter(Task.run_id == run_id)
+
+    # Order by created_at if available, otherwise by id
+    if hasattr(Task, "created_at"):
+        query = query.order_by(Task.created_at.asc())
+    else:
+        query = query.order_by(Task.id.asc())
+
+    task = query.first()
 
     if task is None:
         return {
-            "status": "no_work",
-            "summary": "No pending tasks found",
+            "status": "no_tasks",
+            "message": "No pending tasks found",
         }
 
     # Dispatch based on task owner
     owner = task.owner
-    task_id = task.id
-    run_id = task.run_id
 
-    if owner == "platform":
-        # Use DbPlatformEngine to handle platform tasks
-        engine = DbPlatformEngine(session)
-        event = engine.consume_task(task=task, actor="platform_engine")
-
-        return {
-            "status": "dispatched",
-            "task_id": str(task_id),
-            "owner": owner,
-            "event_type": event.event_type,
-            "event_id": str(event.id),
-            "summary": f"Dispatched platform task '{task.title}' to DbPlatformEngine",
-        }
-
-    elif owner == "workflow":
-        # Use DbWorkflowEngine to plan workflow tasks
-        engine = DbWorkflowEngine(session)
-
-        # For workflow tasks, we need to extract workflow info from the task payload
-        # The payload should contain either workflow_id or workflow_definition
-        payload = task.payload or {}
-        workflow_id = payload.get("workflow_id")
-        workflow_definition = payload.get("workflow_definition")
-
-        plan, event = engine.plan_workflow(
-            run_id=run_id,
-            workflow_id=workflow_id,
-            workflow_definition=workflow_definition,
-            actor="workflow_engine",
+    if owner == "workflow":
+        return _dispatch_workflow_task(session, task, actor)
+    else:
+        # For Phase E8.A, only workflow tasks are supported
+        # Log an event and return unsupported status
+        log_agent_event(
+            session,
+            run_id=task.run_id,
+            task_id=task.id,
+            actor=actor,
+            event_type="task_dispatch_unsupported",
+            summary=f"Task owner '{owner}' not supported in Phase E8.A",
+            details={
+                "owner": owner,
+                "task_id": str(task.id),
+            },
+            step=None,
         )
 
-        # Mark the task as completed after planning
-        task.status = "completed"
-        session.commit()
-        session.refresh(task)
-
-        return {
-            "status": "dispatched",
-            "task_id": str(task_id),
-            "owner": owner,
-            "event_type": event.event_type,
-            "event_id": str(event.id),
-            "workflow_id": plan.get("workflow_id"),
-            "summary": f"Dispatched workflow task '{task.title}' to DbWorkflowEngine",
-        }
-
-    else:
-        # Unknown owner - log warning but don't crash
         return {
             "status": "error",
-            "task_id": str(task_id),
             "owner": owner,
-            "summary": f"Unknown task owner '{owner}' for task {task_id}",
+            "task_id": str(task.id),
+            "message": f"Task owner '{owner}' not supported in Phase E8.A",
         }
+
+
+def _dispatch_workflow_task(
+    session: Session,
+    task: Task,
+    actor: str,
+) -> dict[str, Any]:
+    """
+    Dispatch a workflow task to the workflow engine.
+
+    Parameters
+    ----------
+    session : Session
+        An active SQLAlchemy session.
+    task : Task
+        The workflow task to execute.
+    actor : str
+        The actor name for event logging.
+
+    Returns
+    -------
+    dict[str, Any]
+        A summary dict from the workflow engine, with 'status': 'dispatched'
+        added to indicate successful dispatch.
+    """
+    # Log dispatch event
+    log_agent_event(
+        session,
+        run_id=task.run_id,
+        task_id=task.id,
+        actor=actor,
+        event_type="task_dispatched",
+        summary=f"Task dispatched to workflow engine",
+        details={
+            "owner": task.owner,
+            "task_id": str(task.id),
+        },
+        step=None,
+    )
+
+    # Create workflow engine and execute the workflow
+    engine = DbWorkflowEngine(session)
+    result = engine.run_workflow(task, actor=actor)
+
+    # Add status to indicate successful dispatch
+    result["status"] = "dispatched"
+    result["owner"] = task.owner
+
+    return result

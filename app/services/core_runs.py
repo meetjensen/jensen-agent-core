@@ -356,6 +356,24 @@ def update_task_status_and_log_event(
     return task, event
 
 
+def log_workflow_step_event(
+    session: Session,
+    *,
+    run_id: Any,
+    task_id: Any,
+    workflow_id: str,
+    step_id: str,
+    step_index: int,
+    step_type: str,
+    summary: str,
+    details: Optional[dict] = None,
+    actor: str = "workflow_engine",
+) -> AgentEvent:
+    """
+    Convenience helper to log workflow step execution events.
+
+    This is a specialized wrapper around log_agent_event(...) for logging
+    individual workflow step executions.
 def get_next_pending_platform_task(session: Session) -> Optional[Task]:
     """
     Fetch the next pending task owned by the platform.
