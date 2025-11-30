@@ -135,46 +135,39 @@ def process_task(
     Parameters
     ----------
     session : Session
-        An active SQLAlchemy session for database operations.
-    task_id : UUID | Any
-        The ID of the task to process.
+        An active SQLAlchemy session.
+    task : Task
+        The workflow task to execute.
+    actor : str
+        The actor name for event logging.
 
     Returns
     -------
-    dict[str, Any] | None
-        A summary dict from the handler if the task was processed,
-        or None if the task doesn't match any known patterns.
-
-    Raises
-    ------
-    ValueError
-        If the task is not found or has invalid data.
+    dict[str, Any]
+        A summary dict from the workflow engine, with 'status': 'dispatched'
+        added to indicate successful dispatch.
     """
-    from app.services.core_runs import get_task_by_id
+    # Log dispatch event
+    log_agent_event(
+        session,
+        run_id=task.run_id,
+        task_id=task.id,
+        actor=actor,
+        event_type="task_dispatched",
+        summary=f"Task dispatched to workflow engine",
+        details={
+            "owner": task.owner,
+            "task_id": str(task.id),
+        },
+        step=None,
+    )
 
-    # Fetch the task
-    task = get_task_by_id(session, task_id)
-    if task is None:
-        raise ValueError(f"Task not found: {task_id}")
+    # Create workflow engine and execute the workflow
+    engine = DbWorkflowEngine(session)
+    result = engine.run_workflow(task, actor=actor)
 
-    # Check if this is a workflow planning task
-    if task.owner == "workflow":
-        payload = task.payload or {}
+    # Add status to indicate successful dispatch
+    result["status"] = "dispatched"
+    result["owner"] = task.owner
 
-        # Check if payload contains workflow metadata for planning
-        if "workflow_id" in payload or "workflow_definition" in payload:
-            # Check if this is not already a plan task or step task
-            is_plan = payload.get("is_plan", False)
-            is_step = "step_index" in payload
-
-            if not is_plan and not is_step:
-                # This is a workflow planning request
-                return handle_workflow_planning_task(
-                    session,
-                    task_id=task.id,
-                    run_id=task.run_id,
-                    payload=payload,
-                )
-
-    # Task doesn't match any known patterns
-    return None
+    return result
