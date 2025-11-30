@@ -15,9 +15,10 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models.core_entities import AgentEvent, Run
-from app.services.core_runs import log_agent_event
+from app.models.core_entities import AgentEvent, Run, Task
+from app.services.core_runs import log_agent_event, log_workflow_event
 from app.workflows.loader import load_workflow_definition
+from app.workflows.runner import WorkflowRunner
 
 
 class DbWorkflowEngine:
@@ -165,3 +166,123 @@ class DbWorkflowEngine:
             A list of all currently stored plans.
         """
         return list(self._in_memory_plans.values())
+
+    def run_workflow(
+        self,
+        task: Task,
+        actor: str = "workflow_engine",
+    ) -> dict[str, Any]:
+        """
+        Execute a workflow from a Task and log relevant events.
+
+        This method (Phase E8.A):
+        1. Loads the workflow definition from task.payload
+        2. Logs a 'workflow_started' event
+        3. Instantiates and runs WorkflowRunner
+        4. Logs a 'workflow_completed' event
+        5. Marks the task as 'completed'
+        6. Returns a summary dict
+
+        Parameters
+        ----------
+        task : Task
+            A Task with owner='workflow' and payload containing either:
+            - 'workflow_id': str to load via loader
+            - 'workflow_definition': dict embedded in payload
+        actor : str, default 'workflow_engine'
+            The actor name to record in events.
+
+        Returns
+        -------
+        dict[str, Any]
+            A summary dict containing:
+            - task_id: The task ID
+            - run_id: The run ID
+            - workflow_id: The workflow identifier
+            - workflow_name: The workflow name
+            - steps_executed: Number of steps executed
+            - events: List of event types logged
+            - status: 'completed' or 'failed'
+
+        Raises
+        ------
+        ValueError
+            If task.payload is missing workflow_id or workflow_definition.
+        """
+        # Extract workflow definition from task payload
+        payload = task.payload if isinstance(task.payload, dict) else {}
+        workflow_id = payload.get("workflow_id")
+        workflow_definition = payload.get("workflow_definition")
+
+        # Load the workflow definition
+        if workflow_definition is not None:
+            wf_def = workflow_definition
+        elif workflow_id is not None:
+            wf_def = load_workflow_definition(workflow_id)
+            if wf_def is None:
+                raise ValueError(f"Could not load workflow: {workflow_id}")
+        else:
+            raise ValueError(
+                "Task payload must contain 'workflow_id' or 'workflow_definition'"
+            )
+
+        workflow_id = wf_def.get("id", "unknown")
+        workflow_name = wf_def.get("name", "Unnamed Workflow")
+
+        # Log workflow_started event
+        log_workflow_event(
+            self.session,
+            run_id=task.run_id,
+            task_id=task.id,
+            workflow_id=workflow_id,
+            event_type="workflow_started",
+            summary=f"Workflow '{workflow_name}' started",
+            details={
+                "workflow_id": workflow_id,
+                "workflow_name": workflow_name,
+                "step_count": len(wf_def.get("steps", [])),
+            },
+            actor=actor,
+        )
+
+        # Create runner and execute the workflow
+        runner = WorkflowRunner(self.session)
+        result = runner.run(
+            wf_def,
+            run_id=task.run_id,
+            task_id=task.id,
+            actor=actor,
+        )
+
+        # Log workflow_completed event
+        log_workflow_event(
+            self.session,
+            run_id=task.run_id,
+            task_id=task.id,
+            workflow_id=workflow_id,
+            event_type="workflow_completed",
+            summary=f"Workflow '{workflow_name}' completed ({result['steps_executed']} steps)",
+            details={
+                "workflow_id": workflow_id,
+                "workflow_name": workflow_name,
+                "steps_executed": result["steps_executed"],
+                "status": result["status"],
+            },
+            actor=actor,
+        )
+
+        # Mark task as completed
+        task.status = "completed"
+        self.session.commit()
+        self.session.refresh(task)
+
+        # Return extended summary
+        return {
+            "task_id": str(task.id),
+            "run_id": str(task.run_id),
+            "workflow_id": workflow_id,
+            "workflow_name": workflow_name,
+            "steps_executed": result["steps_executed"],
+            "events": ["workflow_started"] + result["events"] + ["workflow_completed"],
+            "status": result["status"],
+        }

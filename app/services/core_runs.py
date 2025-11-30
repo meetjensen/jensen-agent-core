@@ -254,6 +254,39 @@ def get_task_by_id(session: Session, task_id: Any) -> Optional[Task]:
     return session.query(Task).filter(Task.id == task_id).first()
 
 
+def get_next_pending_task(
+    session: Session,
+    *,
+    owner: Optional[str] = None,
+) -> Optional[Task]:
+    """
+    Fetch the next pending task from the database.
+
+    Parameters
+    ----------
+    session : Session
+        An active SQLAlchemy session.
+    owner : str | None
+        If provided, filter tasks by owner (e.g., 'platform', 'workflow').
+        If None, return the next pending task regardless of owner.
+
+    Returns
+    -------
+    Task | None
+        The next pending task if found, otherwise None.
+        Tasks are ordered by created_at (oldest first).
+    """
+    query = session.query(Task).filter(Task.status == "pending")
+
+    if owner is not None:
+        query = query.filter(Task.owner == owner)
+
+    # Order by created_at to get oldest task first
+    query = query.order_by(Task.created_at)
+
+    return query.first()
+
+
 def update_task_status_and_log_event(
     session: Session,
     *,
@@ -317,6 +350,120 @@ def update_task_status_and_log_event(
         event_type=event_type,
         summary=summary,
         details=event_details,
+        step=None,
+    )
+
+    return task, event
+
+
+def log_workflow_step_event(
+    session: Session,
+    *,
+    run_id: Any,
+    task_id: Any,
+    workflow_id: str,
+    step_id: str,
+    step_index: int,
+    step_type: str,
+    summary: str,
+    details: Optional[dict] = None,
+    actor: str = "workflow_engine",
+) -> AgentEvent:
+    """
+    Convenience helper to log workflow step execution events.
+
+    This is a specialized wrapper around log_agent_event(...) for logging
+    individual workflow step executions.
+def get_next_pending_platform_task(session: Session) -> Optional[Task]:
+    """
+    Fetch the next pending task owned by the platform.
+
+    This helper queries the tasks table for records where:
+    - owner = 'platform'
+    - status = 'pending'
+
+    The results are ordered by created_at ascending (oldest first),
+    and the first matching task is returned.
+
+    Parameters
+    ----------
+    session : Session
+        An existing SQLAlchemy session.
+
+    Returns
+    -------
+    Task | None
+        The next pending platform task, or None if no such tasks exist.
+    """
+    return (
+        session.query(Task)
+        .filter(Task.owner == "platform", Task.status == "pending")
+        .order_by(Task.created_at.asc())
+        .first()
+    )
+
+
+def mark_platform_task_handled_and_create_stub_event(
+    session: Session,
+    task: Task,
+) -> Tuple[Task, AgentEvent]:
+    """
+    Mark a platform task as handled and create a stub AgentEvent for tracking.
+
+    This helper is used by the Platform Engine to process platform-owned tasks.
+    It performs the following operations:
+    1. Updates the task status to 'handled'
+    2. Sets the task's updated_at timestamp
+    3. Creates a stub AgentEvent to record that the platform handled this task
+
+    Parameters
+    ----------
+    session : Session
+        An existing SQLAlchemy session.
+    task : Task
+        The Task instance to mark as handled. Must be a platform-owned task.
+
+    Returns
+    -------
+    Tuple[Task, AgentEvent]
+        A tuple containing:
+        - The updated Task instance (refreshed from database)
+        - The newly created AgentEvent instance
+
+    Notes
+    -----
+    This is a minimal stub implementation. In a full Platform Engine,
+    additional logic would process the task payload and perform actual work.
+    """
+    # Update task status to 'handled'
+    task.status = "handled"
+
+    # Update the updated_at timestamp
+    if hasattr(task, "updated_at"):
+        task.updated_at = func.now()
+
+    session.commit()
+    session.refresh(task)
+
+    # Create a stub AgentEvent to record the handling
+    summary = (
+        f"Platform Engine stub handled task {task.id} "
+        f"of type '{task.title}'"
+    )
+
+    event = log_agent_event(
+        session,
+        run_id=task.run_id,
+        task_id=task.id,
+        actor="platform",
+        event_type="platform_stub_handled",
+        summary=summary,
+        details={
+            "task_title": task.title,
+            "task_owner": task.owner,
+            "original_status": "pending",
+            "new_status": "handled",
+        },
         step=None,
     )
 
