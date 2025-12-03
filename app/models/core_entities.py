@@ -205,3 +205,36 @@ class AgentEvent(Base):
     # Relationships
     run = relationship("Run", back_populates="agent_events")
     task = relationship("Task", back_populates="agent_events")
+
+
+class WorkflowTemplate(Base):
+    """
+    Represents a workflow template definition.
+
+    A workflow template is a reusable blueprint for creating workflows.
+    It contains the workflow definition (steps, configuration, etc.) and
+    metadata about the template itself.
+    """
+
+    __tablename__ = "workflow_templates"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    name = Column(Text, nullable=False, unique=True)
+    description = Column(Text, nullable=True)
+    definition = Column(JSONB, nullable=False)
+    version = Column(Text, nullable=False, server_default=text("'1.0.0'"))
+    status = Column(Text, nullable=False, server_default=text("'active'"))
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
