@@ -63,3 +63,74 @@ def load_workflow_from_file(path: Union[str, Path]) -> WorkflowDefinition:
         )
 
     return load_workflow_dict(data)
+
+
+def load_workflow_definition(
+    workflow_id: str, *, base_dir: Union[str, Path] | None = None
+):
+    """
+    Load a workflow definition by ID from the workflow directory.
+
+    Searches recursively for .yaml/.yml/.json workflow files and returns
+    the first workflow definition that matches the given ID.
+
+    :param workflow_id: The ID of the workflow to load.
+    :param base_dir:    Optional base directory to search. If None, defaults to
+                        app/workflows/examples.
+    :return:            The workflow definition as a dictionary, or None if not found.
+    """
+    if base_dir is None:
+        # Default to app/workflows/examples
+        workflow_dir = Path(__file__).parent / "examples"
+    else:
+        workflow_dir = Path(base_dir)
+
+    if not workflow_dir.exists():
+        return None
+
+    # Recursively search for workflow files
+    for ext in ["*.yaml", "*.yml", "*.json"]:
+        for file_path in workflow_dir.rglob(ext):
+            try:
+                wf_def = load_workflow_from_file(file_path)
+                if wf_def.id == workflow_id:
+                    return wf_def.model_dump()
+            except Exception:
+                # Skip files that can't be loaded
+                continue
+
+    return None
+
+
+def discover_workflows(*, base_dir: Union[str, Path] | None = None):
+    """
+    Discover all workflow definitions in the workflow directory.
+
+    Searches recursively for .yaml/.yml/.json workflow files and loads
+    each one, returning a list of (WorkflowDefinition, Path) tuples.
+
+    :param base_dir: Optional base directory to search. If None, defaults to
+                     app/workflows/examples.
+    :return:         List of (WorkflowDefinition, Path) tuples.
+    """
+    if base_dir is None:
+        # Default to app/workflows/examples
+        workflow_dir = Path(__file__).parent / "examples"
+    else:
+        workflow_dir = Path(base_dir)
+
+    if not workflow_dir.exists():
+        return []
+
+    results = []
+    # Recursively search for workflow files
+    for ext in ["*.yaml", "*.yml", "*.json"]:
+        for file_path in workflow_dir.rglob(ext):
+            try:
+                wf_def = load_workflow_from_file(file_path)
+                results.append((wf_def, file_path))
+            except Exception:
+                # Skip files that can't be loaded
+                continue
+
+    return results
