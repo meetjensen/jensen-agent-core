@@ -221,6 +221,13 @@ try:
 except Exception:
     pass
 
+# Template Publisher (Phase F5)
+try:
+    from app.routers import template_publisher_rw as _template_publisher_rw
+    app.include_router(_template_publisher_rw.router)
+except Exception:
+    pass
+
 # =============================================================================
 # Middleware & state setup
 # =============================================================================
