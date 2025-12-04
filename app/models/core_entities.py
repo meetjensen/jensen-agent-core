@@ -252,17 +252,7 @@ class AgentEvent(Base):
     task = relationship("Task", back_populates="agent_events")
 
 
-class WorkspaceWorkflowMapping(Base):
-    __tablename__ = "workspace_workflow_mappings"
 class WorkflowTemplate(Base):
-    """
-    Represents a workflow template definition.
-
-    A workflow template is a reusable blueprint for creating workflows.
-    It contains the workflow definition (steps, configuration, etc.) and
-    metadata about the template itself.
-    """
-
     __tablename__ = "workflow_templates"
 
     id = Column(
@@ -270,19 +260,16 @@ class WorkflowTemplate(Base):
         primary_key=True,
         server_default=text("uuid_generate_v4()"),
     )
-
-    tenant_id = Column(UUID(as_uuid=True), nullable=False)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False)
-    template_id = Column(UUID(as_uuid=True), nullable=False)
-
-    enabled = Column(Boolean, nullable=False, server_default=text("true"))
-    config = Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
-
-    name = Column(Text, nullable=False, unique=True)
+    tenant_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name = Column(Text, nullable=False)
     description = Column(Text, nullable=True)
-    definition = Column(JSONB, nullable=False)
-    version = Column(Text, nullable=False, server_default=text("'1.0.0'"))
-    status = Column(Text, nullable=False, server_default=text("'active'"))
+    category = Column(Text, nullable=False)
+    tags = Column(JSONB, nullable=True)
+    status = Column(Text, nullable=False, server_default=text("'draft'"))
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -293,3 +280,41 @@ class WorkflowTemplate(Base):
         nullable=False,
         server_default=func.now(),
     )
+
+    # Relationships
+    tenant = relationship("Tenant")
+    versions = relationship(
+        "WorkflowTemplateVersion",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class WorkflowTemplateVersion(Base):
+    __tablename__ = "workflow_template_versions"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    template_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workflow_templates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version_major = Column(Integer, nullable=False)
+    version_minor = Column(Integer, nullable=False)
+    definition = Column(JSONB, nullable=False)
+    changelog = Column(Text, nullable=True)
+    status = Column(Text, nullable=False, server_default=text("'draft'"))
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    published_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    template = relationship("WorkflowTemplate", back_populates="versions")
