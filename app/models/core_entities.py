@@ -254,6 +254,16 @@ class AgentEvent(Base):
 
 class WorkspaceWorkflowMapping(Base):
     __tablename__ = "workspace_workflow_mappings"
+class WorkflowTemplate(Base):
+    """
+    Represents a workflow template definition.
+
+    A workflow template is a reusable blueprint for creating workflows.
+    It contains the workflow definition (steps, configuration, etc.) and
+    metadata about the template itself.
+    """
+
+    __tablename__ = "workflow_templates"
 
     id = Column(
         UUID(as_uuid=True),
@@ -268,6 +278,11 @@ class WorkspaceWorkflowMapping(Base):
     enabled = Column(Boolean, nullable=False, server_default=text("true"))
     config = Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
 
+    name = Column(Text, nullable=False, unique=True)
+    description = Column(Text, nullable=True)
+    definition = Column(JSONB, nullable=False)
+    version = Column(Text, nullable=False, server_default=text("'1.0.0'"))
+    status = Column(Text, nullable=False, server_default=text("'active'"))
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
