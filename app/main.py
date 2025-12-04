@@ -221,6 +221,13 @@ try:
 except Exception:
     pass
 
+# Phase F6: Workflow templates catalog
+try:
+    from app.routers import templates as _templates
+    app.include_router(_templates.router)
+except Exception:
+    pass
+
 # =============================================================================
 # Middleware & state setup
 # =============================================================================

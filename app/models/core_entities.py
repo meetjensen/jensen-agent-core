@@ -205,3 +205,86 @@ class AgentEvent(Base):
     # Relationships
     run = relationship("Run", back_populates="agent_events")
     task = relationship("Task", back_populates="agent_events")
+
+
+class WorkflowTemplate(Base):
+    """
+    A workflow template catalog entry.
+    Each template has a unique key (e.g., 'approval.basic') and multiple versions.
+    """
+
+    __tablename__ = "workflow_templates"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    key = Column(Text, nullable=False, unique=True)  # e.g., 'approval.basic'
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # Relationships
+    versions = relationship(
+        "WorkflowTemplateVersion",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="WorkflowTemplateVersion.created_at.desc()",
+    )
+
+
+class WorkflowTemplateVersion(Base):
+    """
+    A specific version of a workflow template with F6 compatibility metadata.
+    Includes semantic awareness fields: compatibility_level, change_summary, structural_hash.
+    """
+
+    __tablename__ = "workflow_template_versions"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    template_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workflow_templates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version = Column(Text, nullable=False)  # e.g., '1.0.0', '1.1.0'
+    definition = Column(JSONB, nullable=False)  # The workflow definition
+    status = Column(
+        Text,
+        nullable=False,
+        server_default=text("'draft'"),
+    )  # 'draft', 'published', 'deprecated'
+
+    # F6 Compatibility Metadata Fields
+    compatibility_level = Column(
+        Text,
+        nullable=False,
+        server_default=text("'unknown'"),
+    )  # 'breaking', 'additive', 'internal', 'unknown'
+    change_summary = Column(Text, nullable=True)  # Human-readable explanation
+    structural_hash = Column(Text, nullable=True)  # SHA-256 of normalized definition
+
+    published_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # Relationships
+    template = relationship("WorkflowTemplate", back_populates="versions")
