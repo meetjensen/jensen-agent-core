@@ -205,3 +205,72 @@ class AgentEvent(Base):
     # Relationships
     run = relationship("Run", back_populates="agent_events")
     task = relationship("Task", back_populates="agent_events")
+
+
+class WorkflowTemplate(Base):
+    """Workflow template metadata and draft definitions."""
+    __tablename__ = "workflow_templates"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    tenant_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(Text, nullable=False, server_default=text("'general'"))
+    status = Column(Text, nullable=False, server_default=text("'draft'"))  # draft, published, deprecated
+    draft_definition = Column(JSONB, nullable=True)  # Working draft
+    metadata = Column(JSONB, nullable=True)  # Tags, author, etc.
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # Relationships
+    tenant = relationship("Tenant")
+    versions = relationship(
+        "TemplateVersion",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class TemplateVersion(Base):
+    """Immutable published versions of workflow templates."""
+    __tablename__ = "template_versions"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    template_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workflow_templates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version_number = Column(Integer, nullable=False)
+    frozen_definition = Column(JSONB, nullable=False)  # Immutable snapshot
+    changelog = Column(Text, nullable=True)  # What changed in this version
+    published_by = Column(Text, nullable=False)  # User/actor who published
+    published_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # Relationships
+    template = relationship("WorkflowTemplate", back_populates="versions")
