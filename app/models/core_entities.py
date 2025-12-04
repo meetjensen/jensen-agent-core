@@ -205,3 +205,71 @@ class AgentEvent(Base):
     # Relationships
     run = relationship("Run", back_populates="agent_events")
     task = relationship("Task", back_populates="agent_events")
+
+
+class WorkflowTemplate(Base):
+    __tablename__ = "workflow_templates"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    tenant_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(Text, nullable=False)
+    tags = Column(JSONB, nullable=True)
+    status = Column(Text, nullable=False, server_default=text("'draft'"))
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # Relationships
+    tenant = relationship("Tenant")
+    versions = relationship(
+        "WorkflowTemplateVersion",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class WorkflowTemplateVersion(Base):
+    __tablename__ = "workflow_template_versions"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    template_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workflow_templates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version_major = Column(Integer, nullable=False)
+    version_minor = Column(Integer, nullable=False)
+    definition = Column(JSONB, nullable=False)
+    changelog = Column(Text, nullable=True)
+    status = Column(Text, nullable=False, server_default=text("'draft'"))
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    published_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    template = relationship("WorkflowTemplate", back_populates="versions")
