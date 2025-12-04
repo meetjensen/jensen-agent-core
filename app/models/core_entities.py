@@ -1,16 +1,61 @@
 from __future__ import annotations
 
+from uuid import UUID as PyUUID
+
 from sqlalchemy import (
     Column,
     Text,
     DateTime,
     Integer,
+    Boolean,
     ForeignKey,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.types import JSON, TypeDecorator, CHAR
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import func
+
+
+class UUID(TypeDecorator):
+    """Platform-independent UUID type.
+
+    Uses PostgreSQL's UUID type when available, otherwise uses
+    CHAR(36) storing as stringified hex values.
+    """
+    impl = CHAR
+    cache_ok = True
+
+    def __init__(self, as_uuid=True):
+        """Accept as_uuid parameter for PostgreSQL compatibility."""
+        super().__init__()
+        self.as_uuid = as_uuid
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(PG_UUID(as_uuid=self.as_uuid))
+        else:
+            return dialect.type_descriptor(CHAR(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == 'postgresql':
+            return value
+        else:
+            if isinstance(value, PyUUID):
+                return str(value)
+            else:
+                return str(PyUUID(value))
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        else:
+            if isinstance(value, PyUUID):
+                return value
+            else:
+                return PyUUID(value)
 
 # Try to reuse a shared Base from app._db if it exists.
 # If that import fails (e.g., different structure), fall back to a local Base.
@@ -207,6 +252,8 @@ class AgentEvent(Base):
     task = relationship("Task", back_populates="agent_events")
 
 
+class WorkspaceWorkflowMapping(Base):
+    __tablename__ = "workspace_workflow_mappings"
 class WorkflowTemplate(Base):
     """
     Represents a workflow template definition.
@@ -223,6 +270,14 @@ class WorkflowTemplate(Base):
         primary_key=True,
         server_default=text("uuid_generate_v4()"),
     )
+
+    tenant_id = Column(UUID(as_uuid=True), nullable=False)
+    workspace_id = Column(UUID(as_uuid=True), nullable=False)
+    template_id = Column(UUID(as_uuid=True), nullable=False)
+
+    enabled = Column(Boolean, nullable=False, server_default=text("true"))
+    config = Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
+
     name = Column(Text, nullable=False, unique=True)
     description = Column(Text, nullable=True)
     definition = Column(JSONB, nullable=False)
