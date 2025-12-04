@@ -142,7 +142,7 @@ def get_workflow_template_by_id(
     Parameters
     ----------
     session : Session
-        An existing SQLAlchemy session.
+    An existing SQLAlchemy session.
     template_id : Any
         UUID (or compatible type) of the template.
 
@@ -492,14 +492,14 @@ def delete_workflow_template(
     Parameters
     ----------
     session : Session
-        An existing SQLAlchemy session.
+        An active SQLAlchemy session.
     template_id : Any
-        UUID (or compatible type) of the template.
+        UUID (or compatible type) of the template to delete.
 
     Returns
     -------
     bool
-        True if the template was deleted, False if it was not found.
+        True if the template was deleted, False if not found.
     """
     template = get_workflow_template_by_id(session, template_id)
     if template is None:
