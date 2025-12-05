@@ -1,10 +1,11 @@
 """
-Minimal WorkflowEngine implementation for Jensen Core AI OS (Phase E6).
+Minimal WorkflowEngine implementation for Jensen Core AI OS (Phase E6 + Phase G).
 
-This module provides a stub workflow engine that:
+This module provides a workflow engine that:
 - Accepts workflow identifiers or pre-loaded workflow definitions
+- (Phase G) Supports template-based workflows with version resolution
 - Creates stub AgentEvents to record workflow planning
-- Does NOT execute real workflows (that's for future phases)
+- Executes workflows via WorkflowRunner
 
 The engine follows the same minimal, DB-backed style as other core services.
 """
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.models.core_entities import AgentEvent, Run, Task
 from app.services.core_runs import log_agent_event, log_workflow_event
+from app.services import template_service
 from app.workflows.loader import load_workflow_definition
 from app.workflows.runner import WorkflowRunner
 
@@ -175,8 +177,9 @@ class DbWorkflowEngine:
         """
         Execute a workflow from a Task and log relevant events.
 
-        This method (Phase E8.A):
+        This method (Phase E8.A + Phase G):
         1. Loads the workflow definition from task.payload
+           - (Phase G) Supports template_key with version resolution
         2. Logs a 'workflow_started' event
         3. Instantiates and runs WorkflowRunner
         4. Logs a 'workflow_completed' event
@@ -187,8 +190,9 @@ class DbWorkflowEngine:
         ----------
         task : Task
             A Task with owner='workflow' and payload containing either:
-            - 'workflow_id': str to load via loader
-            - 'workflow_definition': dict embedded in payload
+            - 'template_key': str (Phase G) - resolve from template catalog
+            - 'workflow_id': str - load via loader (legacy)
+            - 'workflow_definition': dict - embedded definition
         actor : str, default 'workflow_engine'
             The actor name to record in events.
 
@@ -203,45 +207,99 @@ class DbWorkflowEngine:
             - steps_executed: Number of steps executed
             - events: List of event types logged
             - status: 'completed' or 'failed'
+            - (Phase G) resolved_version: Version info if template was used
 
         Raises
         ------
         ValueError
-            If task.payload is missing workflow_id or workflow_definition.
+            If task.payload is missing required workflow identifier.
         """
         # Extract workflow definition from task payload
         payload = task.payload if isinstance(task.payload, dict) else {}
+
+        # Phase G: Template-based workflow resolution
+        template_key = payload.get("template_key")
         workflow_id = payload.get("workflow_id")
         workflow_definition = payload.get("workflow_definition")
 
+        resolved_version_info = None
+
         # Load the workflow definition
         if workflow_definition is not None:
+            # Embedded definition (highest priority)
             wf_def = workflow_definition
+        elif template_key is not None:
+            # Phase G: Resolve from template catalog
+            version_major = payload.get("version_major")
+            version_minor = payload.get("version_minor")
+            allow_breaking = payload.get("allow_breaking", False)
+            allow_deprecated = payload.get("allow_deprecated", False)
+            allow_draft = payload.get("allow_draft", False)
+
+            result = template_service.resolve_version(
+                self.session,
+                template_key=template_key,
+                version_major=version_major,
+                version_minor=version_minor,
+                allow_breaking=allow_breaking,
+                allow_deprecated=allow_deprecated,
+                allow_draft=allow_draft,
+            )
+
+            if not result:
+                raise ValueError(
+                    f"Could not resolve template: {template_key} "
+                    f"(major={version_major}, minor={version_minor})"
+                )
+
+            resolved_version, resolution_reason = result
+            wf_def = resolved_version.definition
+
+            resolved_version_info = {
+                "template_key": template_key,
+                "version_major": resolved_version.version_major,
+                "version_minor": resolved_version.version_minor,
+                "version_id": str(resolved_version.id),
+                "status": resolved_version.status,
+                "compatibility_level": resolved_version.compatibility_level,
+                "resolution_reason": resolution_reason,
+            }
         elif workflow_id is not None:
+            # Legacy: Load via file loader
             wf_def = load_workflow_definition(workflow_id)
             if wf_def is None:
                 raise ValueError(f"Could not load workflow: {workflow_id}")
         else:
             raise ValueError(
-                "Task payload must contain 'workflow_id' or 'workflow_definition'"
+                "Task payload must contain 'template_key', 'workflow_id', or 'workflow_definition'"
             )
 
         workflow_id = wf_def.get("id", "unknown")
         workflow_name = wf_def.get("name", "Unnamed Workflow")
 
-        # Log workflow_started event
+        # Log workflow_started event (with Phase G version info if applicable)
+        started_details = {
+            "workflow_id": workflow_id,
+            "workflow_name": workflow_name,
+            "step_count": len(wf_def.get("steps", [])),
+        }
+        if resolved_version_info:
+            started_details["resolved_version"] = resolved_version_info
+
         log_workflow_event(
             self.session,
             run_id=task.run_id,
             task_id=task.id,
             workflow_id=workflow_id,
             event_type="workflow_started",
-            summary=f"Workflow '{workflow_name}' started",
-            details={
-                "workflow_id": workflow_id,
-                "workflow_name": workflow_name,
-                "step_count": len(wf_def.get("steps", [])),
-            },
+            summary=f"Workflow '{workflow_name}' started"
+            + (
+                f" (template {resolved_version_info['template_key']} "
+                f"v{resolved_version_info['version_major']}.{resolved_version_info['version_minor']})"
+                if resolved_version_info
+                else ""
+            ),
+            details=started_details,
             actor=actor,
         )
 
@@ -254,7 +312,16 @@ class DbWorkflowEngine:
             actor=actor,
         )
 
-        # Log workflow_completed event
+        # Log workflow_completed event (with Phase G version info if applicable)
+        completed_details = {
+            "workflow_id": workflow_id,
+            "workflow_name": workflow_name,
+            "steps_executed": result["steps_executed"],
+            "status": result["status"],
+        }
+        if resolved_version_info:
+            completed_details["resolved_version"] = resolved_version_info
+
         log_workflow_event(
             self.session,
             run_id=task.run_id,
@@ -262,12 +329,7 @@ class DbWorkflowEngine:
             workflow_id=workflow_id,
             event_type="workflow_completed",
             summary=f"Workflow '{workflow_name}' completed ({result['steps_executed']} steps)",
-            details={
-                "workflow_id": workflow_id,
-                "workflow_name": workflow_name,
-                "steps_executed": result["steps_executed"],
-                "status": result["status"],
-            },
+            details=completed_details,
             actor=actor,
         )
 
@@ -276,8 +338,8 @@ class DbWorkflowEngine:
         self.session.commit()
         self.session.refresh(task)
 
-        # Return extended summary
-        return {
+        # Return extended summary (including Phase G version info if applicable)
+        summary = {
             "task_id": str(task.id),
             "run_id": str(task.run_id),
             "workflow_id": workflow_id,
@@ -286,3 +348,7 @@ class DbWorkflowEngine:
             "events": ["workflow_started"] + result["events"] + ["workflow_completed"],
             "status": result["status"],
         }
+        if resolved_version_info:
+            summary["resolved_version"] = resolved_version_info
+
+        return summary

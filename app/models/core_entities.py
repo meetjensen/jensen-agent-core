@@ -205,3 +205,92 @@ class AgentEvent(Base):
     # Relationships
     run = relationship("Run", back_populates="agent_events")
     task = relationship("Task", back_populates="agent_events")
+
+
+# Phase G: Workflow Template Catalog Models
+
+
+class WorkflowTemplate(Base):
+    """
+    Workflow template catalog entry.
+    Each template has a unique template_key and can have multiple versions.
+    """
+
+    __tablename__ = "workflow_templates"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    template_key = Column(Text, nullable=False, unique=True, index=True)
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    owner = Column(Text, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # Relationships
+    versions = relationship(
+        "WorkflowTemplateVersion",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class WorkflowTemplateVersion(Base):
+    """
+    Versioned workflow definition with compatibility metadata.
+
+    Status values: 'active', 'deprecated', 'draft'
+    Compatibility levels: 'breaking', 'additive', 'internal', 'unknown'
+    """
+
+    __tablename__ = "workflow_template_versions"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    template_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workflow_templates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version_major = Column(Integer, nullable=False)
+    version_minor = Column(Integer, nullable=False)
+    status = Column(
+        Text,
+        nullable=False,
+        server_default=text("'draft'"),
+    )  # 'active', 'deprecated', 'draft'
+    compatibility_level = Column(
+        Text,
+        nullable=False,
+        server_default=text("'unknown'"),
+    )  # 'breaking', 'additive', 'internal', 'unknown'
+    structural_hash = Column(Text, nullable=True)
+    definition = Column(JSONB, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # Relationships
+    template = relationship("WorkflowTemplate", back_populates="versions")

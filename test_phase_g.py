@@ -1,0 +1,442 @@
+#!/usr/bin/env python3
+"""
+Test script for Phase G - Version Resolution and Template Catalog.
+
+This script validates:
+1. Template and version creation
+2. Structural hash computation
+3. Compatibility level determination
+4. Version resolution with Phase G default rules
+5. Status and compatibility filtering
+"""
+from __future__ import annotations
+
+import sys
+from typing import Any, Dict
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app._db import DB_URL
+from app.models.core_entities import Base
+from app.services import template_service
+from app.workflows.compatibility import (
+    TemplateStatus,
+    CompatibilityLevel,
+    compute_structural_hash,
+    determine_compatibility_level,
+)
+
+
+def create_test_workflow(step_count: int = 1, step_type: str = "noop") -> Dict[str, Any]:
+    """Create a test workflow definition."""
+    return {
+        "id": f"test-workflow-{step_count}",
+        "name": f"Test Workflow {step_count}",
+        "steps": [
+            {
+                "id": f"step-{i}",
+                "type": step_type,
+                "inputs": {"message": f"Step {i}"},
+                "outputs": {},
+            }
+            for i in range(1, step_count + 1)
+        ],
+    }
+
+
+def test_phase_g():
+    """Test Phase G version resolution and template catalog."""
+    print("=" * 80)
+    print("Phase G - Version Resolution and Template Catalog Test")
+    print("=" * 80)
+    print()
+
+    if not DB_URL:
+        print("ERROR: DATABASE_URL (DB_URL) is not set")
+        return False
+
+    # Create engine and session
+    engine = create_engine(DB_URL, pool_pre_ping=True, future=True)
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    session = SessionLocal()
+
+    try:
+        # Ensure Phase G tables exist
+        print("Initializing Phase G tables...")
+        Base.metadata.create_all(engine, checkfirst=True)
+        print("  ✓ Tables initialized")
+        print()
+
+        # ====================================================================
+        # Test 1: Structural Hash Computation
+        # ====================================================================
+        print("Test 1: Structural Hash Computation")
+        print("-" * 80)
+
+        workflow_v1 = create_test_workflow(1)
+        workflow_v2 = create_test_workflow(2)  # Different structure
+        workflow_v1_modified = {
+            **workflow_v1,
+            "description": "Modified description",  # Same structure, different metadata
+        }
+
+        hash_v1 = compute_structural_hash(workflow_v1)
+        hash_v2 = compute_structural_hash(workflow_v2)
+        hash_v1_modified = compute_structural_hash(workflow_v1_modified)
+
+        print(f"  Workflow v1 hash: {hash_v1}")
+        print(f"  Workflow v2 hash: {hash_v2}")
+        print(f"  Workflow v1 (modified metadata) hash: {hash_v1_modified}")
+
+        if hash_v1 != hash_v2:
+            print("  ✓ Different structures have different hashes")
+        else:
+            print("  ✗ FAIL: Different structures should have different hashes")
+            return False
+
+        if hash_v1 == hash_v1_modified:
+            print("  ✓ Same structure with different metadata has same hash")
+        else:
+            print("  ✗ FAIL: Same structure should have same hash regardless of metadata")
+            return False
+
+        print()
+
+        # ====================================================================
+        # Test 2: Compatibility Level Determination
+        # ====================================================================
+        print("Test 2: Compatibility Level Determination")
+        print("-" * 80)
+
+        # Internal change (metadata only)
+        compat_internal = determine_compatibility_level(workflow_v1, workflow_v1_modified)
+        print(f"  Metadata change: {compat_internal}")
+        if compat_internal != CompatibilityLevel.INTERNAL:
+            print(f"  ✗ FAIL: Expected INTERNAL, got {compat_internal}")
+            return False
+        print("  ✓ Metadata-only changes are INTERNAL")
+
+        # Additive change (new step)
+        compat_additive = determine_compatibility_level(workflow_v1, workflow_v2)
+        print(f"  New step added: {compat_additive}")
+        if compat_additive != CompatibilityLevel.ADDITIVE:
+            print(f"  ✗ FAIL: Expected ADDITIVE, got {compat_additive}")
+            return False
+        print("  ✓ New steps are ADDITIVE")
+
+        # Breaking change (step removed)
+        compat_breaking = determine_compatibility_level(workflow_v2, workflow_v1)
+        print(f"  Step removed: {compat_breaking}")
+        if compat_breaking != CompatibilityLevel.BREAKING:
+            print(f"  ✗ FAIL: Expected BREAKING, got {compat_breaking}")
+            return False
+        print("  ✓ Removed steps are BREAKING")
+
+        print()
+
+        # ====================================================================
+        # Test 3: Template and Version Creation
+        # ====================================================================
+        print("Test 3: Template and Version Creation")
+        print("-" * 80)
+
+        # Create a test template
+        template = template_service.create_template(
+            session,
+            template_key="test-workflow-g",
+            name="Phase G Test Workflow",
+            description="Test template for Phase G",
+            owner="test_script",
+        )
+        print(f"  ✓ Created template: {template.template_key} (ID: {template.id})")
+
+        # Create version 1.0 (draft, additive)
+        version_1_0 = template_service.create_version(
+            session,
+            template_id=template.id,
+            version_major=1,
+            version_minor=0,
+            definition=workflow_v1,
+            status=TemplateStatus.DRAFT,
+            compatibility_level=CompatibilityLevel.ADDITIVE,
+        )
+        print(f"  ✓ Created version 1.0: status={version_1_0.status}, compat={version_1_0.compatibility_level}")
+
+        # Create version 1.1 (active, internal)
+        version_1_1 = template_service.create_version(
+            session,
+            template_id=template.id,
+            version_major=1,
+            version_minor=1,
+            definition=workflow_v1_modified,
+            status=TemplateStatus.ACTIVE,
+            compatibility_level=CompatibilityLevel.INTERNAL,
+        )
+        print(f"  ✓ Created version 1.1: status={version_1_1.status}, compat={version_1_1.compatibility_level}")
+
+        # Create version 1.2 (active, additive)
+        version_1_2 = template_service.create_version(
+            session,
+            template_id=template.id,
+            version_major=1,
+            version_minor=2,
+            definition=workflow_v2,
+            status=TemplateStatus.ACTIVE,
+            compatibility_level=CompatibilityLevel.ADDITIVE,
+        )
+        print(f"  ✓ Created version 1.2: status={version_1_2.status}, compat={version_1_2.compatibility_level}")
+
+        # Create version 2.0 (active, breaking)
+        workflow_v3 = create_test_workflow(1, step_type="different_type")
+        version_2_0 = template_service.create_version(
+            session,
+            template_id=template.id,
+            version_major=2,
+            version_minor=0,
+            definition=workflow_v3,
+            status=TemplateStatus.ACTIVE,
+            compatibility_level=CompatibilityLevel.BREAKING,
+        )
+        print(f"  ✓ Created version 2.0: status={version_2_0.status}, compat={version_2_0.compatibility_level}")
+
+        # Create version 1.3 (deprecated, additive)
+        version_1_3 = template_service.create_version(
+            session,
+            template_id=template.id,
+            version_major=1,
+            version_minor=3,
+            definition=workflow_v2,
+            status=TemplateStatus.DEPRECATED,
+            compatibility_level=CompatibilityLevel.ADDITIVE,
+        )
+        print(f"  ✓ Created version 1.3: status={version_1_3.status}, compat={version_1_3.compatibility_level}")
+
+        print()
+
+        # ====================================================================
+        # Test 4: Phase G Default Resolution Rules
+        # ====================================================================
+        print("Test 4: Phase G Default Resolution Rules")
+        print("-" * 80)
+
+        # Test 4a: Default behavior (latest active, non-breaking, additive+internal)
+        result = template_service.resolve_version(
+            session,
+            template_key="test-workflow-g",
+            allow_breaking=False,
+            allow_deprecated=False,
+            allow_draft=False,
+        )
+
+        if not result:
+            print("  ✗ FAIL: No version resolved with default rules")
+            return False
+
+        resolved_version, resolution_reason = result
+        print(f"  Default resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
+        print(f"  Reason: {resolution_reason}")
+        print(f"  Status: {resolved_version.status}")
+        print(f"  Compatibility: {resolved_version.compatibility_level}")
+
+        # Should resolve to 1.2 (latest active non-breaking)
+        if resolved_version.version_major != 1 or resolved_version.version_minor != 2:
+            print(f"  ✗ FAIL: Expected v1.2, got v{resolved_version.version_major}.{resolved_version.version_minor}")
+            return False
+        print("  ✓ Correctly resolved to v1.2 (latest active, non-breaking)")
+
+        print()
+
+        # Test 4b: Allow breaking changes
+        print("Test 4b: Allow breaking changes")
+        result = template_service.resolve_version(
+            session,
+            template_key="test-workflow-g",
+            allow_breaking=True,
+            allow_deprecated=False,
+            allow_draft=False,
+        )
+
+        if not result:
+            print("  ✗ FAIL: No version resolved with allow_breaking=True")
+            return False
+
+        resolved_version, resolution_reason = result
+        print(f"  Resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
+        print(f"  Reason: {resolution_reason}")
+
+        # Should resolve to 2.0 (latest active including breaking)
+        if resolved_version.version_major != 2 or resolved_version.version_minor != 0:
+            print(f"  ✗ FAIL: Expected v2.0, got v{resolved_version.version_major}.{resolved_version.version_minor}")
+            return False
+        print("  ✓ Correctly resolved to v2.0 (latest active with breaking)")
+
+        print()
+
+        # Test 4c: Allow deprecated
+        print("Test 4c: Allow deprecated (but not breaking)")
+        result = template_service.resolve_version(
+            session,
+            template_key="test-workflow-g",
+            allow_breaking=False,
+            allow_deprecated=True,
+            allow_draft=False,
+        )
+
+        if not result:
+            print("  ✗ FAIL: No version resolved with allow_deprecated=True")
+            return False
+
+        resolved_version, resolution_reason = result
+        print(f"  Resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
+        print(f"  Reason: {resolution_reason}")
+
+        # Should still resolve to 1.3 or 1.2 (latest non-breaking, can include deprecated)
+        # 1.3 is deprecated but newer than 1.2
+        if resolved_version.version_major != 1 or resolved_version.version_minor not in [2, 3]:
+            print(f"  ✗ FAIL: Expected v1.2 or v1.3, got v{resolved_version.version_major}.{resolved_version.version_minor}")
+            return False
+        print(f"  ✓ Correctly resolved to v{resolved_version.version_major}.{resolved_version.version_minor}")
+
+        print()
+
+        # Test 4d: Exact version request
+        print("Test 4d: Exact version request")
+        result = template_service.resolve_version(
+            session,
+            template_key="test-workflow-g",
+            version_major=1,
+            version_minor=1,
+        )
+
+        if not result:
+            print("  ✗ FAIL: No version resolved for exact request v1.1")
+            return False
+
+        resolved_version, resolution_reason = result
+        print(f"  Resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
+        print(f"  Reason: {resolution_reason}")
+
+        if resolved_version.version_major != 1 or resolved_version.version_minor != 1:
+            print(f"  ✗ FAIL: Expected v1.1, got v{resolved_version.version_major}.{resolved_version.version_minor}")
+            return False
+        print("  ✓ Correctly resolved exact version v1.1")
+
+        print()
+
+        # Test 4e: Major version constraint
+        print("Test 4e: Major version constraint (v1.x)")
+        result = template_service.resolve_version(
+            session,
+            template_key="test-workflow-g",
+            version_major=1,
+            allow_breaking=False,
+            allow_deprecated=False,
+            allow_draft=False,
+        )
+
+        if not result:
+            print("  ✗ FAIL: No version resolved for major version 1")
+            return False
+
+        resolved_version, resolution_reason = result
+        print(f"  Resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
+        print(f"  Reason: {resolution_reason}")
+
+        if resolved_version.version_major != 1:
+            print(f"  ✗ FAIL: Expected major version 1, got {resolved_version.version_major}")
+            return False
+        print(f"  ✓ Correctly resolved to v1.{resolved_version.version_minor} (major version constraint)")
+
+        print()
+
+        # ====================================================================
+        # Test 5: List Operations
+        # ====================================================================
+        print("Test 5: List Operations")
+        print("-" * 80)
+
+        # List all templates
+        templates, total = template_service.list_templates(session)
+        print(f"  ✓ Found {total} templates")
+
+        # List all versions
+        versions = template_service.list_versions(
+            session,
+            template_key="test-workflow-g",
+        )
+        print(f"  ✓ Found {len(versions)} versions for test-workflow-g")
+
+        # List only active versions
+        active_versions = template_service.list_versions(
+            session,
+            template_key="test-workflow-g",
+            status=TemplateStatus.ACTIVE,
+        )
+        print(f"  ✓ Found {len(active_versions)} active versions")
+
+        if len(active_versions) != 3:  # 1.1, 1.2, 2.0
+            print(f"  ✗ FAIL: Expected 3 active versions, got {len(active_versions)}")
+            return False
+
+        print()
+
+        # ====================================================================
+        # Test 6: Status Updates
+        # ====================================================================
+        print("Test 6: Status Updates")
+        print("-" * 80)
+
+        # Promote draft to active
+        updated_version = template_service.update_version_status(
+            session,
+            version_id=version_1_0.id,
+            status=TemplateStatus.ACTIVE,
+        )
+
+        if not updated_version or updated_version.status != TemplateStatus.ACTIVE.value:
+            print("  ✗ FAIL: Failed to update version status")
+            return False
+
+        print(f"  ✓ Updated version 1.0 from draft to active")
+        print()
+
+        # ====================================================================
+        # Summary
+        # ====================================================================
+        print("=" * 80)
+        print("✓ Phase G test PASSED!")
+        print("=" * 80)
+        print()
+        print("Summary:")
+        print(f"  • Structural hash computation: ✓")
+        print(f"  • Compatibility level determination: ✓")
+        print(f"  • Template and version creation: ✓")
+        print(f"  • Default resolution (active, non-breaking): ✓")
+        print(f"  • Resolution with allow_breaking=True: ✓")
+        print(f"  • Resolution with allow_deprecated=True: ✓")
+        print(f"  • Exact version resolution: ✓")
+        print(f"  • Major version constraint: ✓")
+        print(f"  • List operations: ✓")
+        print(f"  • Status updates: ✓")
+        print()
+
+        return True
+
+    except Exception as e:
+        print()
+        print("=" * 80)
+        print(f"✗ Phase G test FAILED with error:")
+        print(f"  {type(e).__name__}: {e}")
+        print("=" * 80)
+        import traceback
+        traceback.print_exc()
+        return False
+
+    finally:
+        session.close()
+
+
+if __name__ == "__main__":
+    success = test_phase_g()
+    sys.exit(0 if success else 1)
