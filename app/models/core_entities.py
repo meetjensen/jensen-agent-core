@@ -1,16 +1,61 @@
 from __future__ import annotations
 
+from uuid import UUID as PyUUID
+
 from sqlalchemy import (
     Column,
     Text,
     DateTime,
     Integer,
+    Boolean,
     ForeignKey,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.types import JSON, TypeDecorator, CHAR
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import func
+
+
+class UUID(TypeDecorator):
+    """Platform-independent UUID type.
+
+    Uses PostgreSQL's UUID type when available, otherwise uses
+    CHAR(36) storing as stringified hex values.
+    """
+    impl = CHAR
+    cache_ok = True
+
+    def __init__(self, as_uuid=True):
+        """Accept as_uuid parameter for PostgreSQL compatibility."""
+        super().__init__()
+        self.as_uuid = as_uuid
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(PG_UUID(as_uuid=self.as_uuid))
+        else:
+            return dialect.type_descriptor(CHAR(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == 'postgresql':
+            return value
+        else:
+            if isinstance(value, PyUUID):
+                return str(value)
+            else:
+                return str(PyUUID(value))
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        else:
+            if isinstance(value, PyUUID):
+                return value
+            else:
+                return PyUUID(value)
 
 # Try to reuse a shared Base from app._db if it exists.
 # If that import fails (e.g., different structure), fall back to a local Base.
@@ -214,6 +259,10 @@ class WorkflowTemplate(Base):
     """
     Workflow template catalog entry.
     Each template has a unique template_key and can have multiple versions.
+class WorkflowTemplate(Base):
+    """
+    A workflow template catalog entry.
+    Each template has a unique key (e.g., 'approval.basic') and multiple versions.
     """
 
     __tablename__ = "workflow_templates"
@@ -223,10 +272,19 @@ class WorkflowTemplate(Base):
         primary_key=True,
         server_default=text("uuid_generate_v4()"),
     )
-    template_key = Column(Text, nullable=False, unique=True, index=True)
+    key = Column(Text, nullable=False, unique=True)  # e.g., 'approval.basic'
     name = Column(Text, nullable=False)
     description = Column(Text, nullable=True)
-    owner = Column(Text, nullable=False)
+    tenant_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(Text, nullable=False)
+    tags = Column(JSONB, nullable=True)
+    status = Column(Text, nullable=False, server_default=text("'draft'"))
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -239,20 +297,20 @@ class WorkflowTemplate(Base):
     )
 
     # Relationships
+    tenant = relationship("Tenant")
     versions = relationship(
         "WorkflowTemplateVersion",
         back_populates="template",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        order_by="WorkflowTemplateVersion.created_at.desc()",
     )
 
 
 class WorkflowTemplateVersion(Base):
     """
-    Versioned workflow definition with compatibility metadata.
-
-    Status values: 'active', 'deprecated', 'draft'
-    Compatibility levels: 'breaking', 'additive', 'internal', 'unknown'
+    A specific version of a workflow template with F6 compatibility metadata.
+    Includes semantic awareness fields: compatibility_level, change_summary, structural_hash.
     """
 
     __tablename__ = "workflow_template_versions"
@@ -273,7 +331,9 @@ class WorkflowTemplateVersion(Base):
         Text,
         nullable=False,
         server_default=text("'draft'"),
-    )  # 'active', 'deprecated', 'draft'
+    )  # 'draft', 'published', 'deprecated'
+
+    # F6 Compatibility Metadata Fields
     compatibility_level = Column(
         Text,
         nullable=False,
@@ -286,11 +346,7 @@ class WorkflowTemplateVersion(Base):
         nullable=False,
         server_default=func.now(),
     )
-    updated_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-    )
+    published_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     template = relationship("WorkflowTemplate", back_populates="versions")

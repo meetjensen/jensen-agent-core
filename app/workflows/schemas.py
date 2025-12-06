@@ -26,3 +26,12 @@ class WorkflowDefinition(BaseModel):
     description: Optional[str] = None
     steps: List[WorkflowStep]
     metadata: Optional[Dict[str, Any]] = None
+
+
+class WorkflowCatalogEntry(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    path: str
+    tags: Optional[List[str]] = None
+    metadata: Optional[Dict[str, Any]] = None

@@ -225,6 +225,14 @@ except Exception:
 try:
     from app.routers import template_catalog_v1 as _template_catalog_v1
     app.include_router(_template_catalog_v1.router)
+# Phase F6: Workflow templates catalog
+try:
+    from app.routers import templates as _templates
+    app.include_router(_templates.router)
+# Template Publisher (Phase F5)
+try:
+    from app.routers import template_publisher_rw as _template_publisher_rw
+    app.include_router(_template_publisher_rw.router)
 except Exception:
     pass
 
