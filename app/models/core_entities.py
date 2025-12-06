@@ -252,6 +252,13 @@ class AgentEvent(Base):
     task = relationship("Task", back_populates="agent_events")
 
 
+# Phase G: Workflow Template Catalog Models
+
+
+class WorkflowTemplate(Base):
+    """
+    Workflow template catalog entry.
+    Each template has a unique template_key and can have multiple versions.
 class WorkflowTemplate(Base):
     """
     A workflow template catalog entry.
@@ -318,8 +325,8 @@ class WorkflowTemplateVersion(Base):
         ForeignKey("workflow_templates.id", ondelete="CASCADE"),
         nullable=False,
     )
-    version = Column(Text, nullable=False)  # e.g., '1.0.0', '1.1.0'
-    definition = Column(JSONB, nullable=False)  # The workflow definition
+    version_major = Column(Integer, nullable=False)
+    version_minor = Column(Integer, nullable=False)
     status = Column(
         Text,
         nullable=False,
@@ -332,15 +339,8 @@ class WorkflowTemplateVersion(Base):
         nullable=False,
         server_default=text("'unknown'"),
     )  # 'breaking', 'additive', 'internal', 'unknown'
-    change_summary = Column(Text, nullable=True)  # Human-readable explanation
-    structural_hash = Column(Text, nullable=True)  # SHA-256 of normalized definition
-
-    published_at = Column(DateTime(timezone=True), nullable=True)
-    version_major = Column(Integer, nullable=False)
-    version_minor = Column(Integer, nullable=False)
+    structural_hash = Column(Text, nullable=True)
     definition = Column(JSONB, nullable=False)
-    changelog = Column(Text, nullable=True)
-    status = Column(Text, nullable=False, server_default=text("'draft'"))
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
