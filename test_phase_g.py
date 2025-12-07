@@ -19,7 +19,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app._db import DB_URL
-from app.models.core_entities import Base
+from app.models.core_entities import Base, WorkflowTemplate
 from app.services import template_service
 from app.workflows.compatibility import (
     TemplateStatus,
@@ -66,6 +66,17 @@ def test_phase_g():
         print("Initializing Phase G tables...")
         Base.metadata.create_all(engine, checkfirst=True)
         print("  ✓ Tables initialized")
+        print()
+
+        # Clean up any existing test data for idempotency
+        print("Cleaning up previous test data...")
+        test_templates = session.query(WorkflowTemplate).filter(
+            WorkflowTemplate.template_key.like("test-%")
+        ).all()
+        for template in test_templates:
+            session.delete(template)  # Cascade deletes versions
+        session.commit()
+        print(f"  ✓ Cleaned up {len(test_templates)} test templates")
         print()
 
         # ====================================================================
