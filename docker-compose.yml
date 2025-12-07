@@ -14,6 +14,7 @@ services:
       - /volume1/JENSEN/agents/my-agent/.env
     volumes:
       - /volume1/JENSEN/agents/my-agent/app:/app/app
+      - /volume1/JENSEN/agents/my-agent/scripts:/app/scripts
       - /volume1/JENSEN/agents/my-agent/.env:/app/.env
       - /volume1/JENSEN/agents/my-agent/data:/app/data
     restart: unless-stopped

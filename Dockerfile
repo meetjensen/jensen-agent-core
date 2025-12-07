@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # App (copy into /app/app so the package name is "app")
 COPY app /app/app
 
+# Scripts (copy to /app/scripts for migrations and utilities)
+COPY scripts /app/scripts
+
 EXPOSE 8000
 
 # Uvicorn entrypoint expects package "app" with module main.py
