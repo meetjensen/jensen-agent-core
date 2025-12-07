@@ -221,6 +221,13 @@ try:
 except Exception:
     pass
 
+# Phase G Template Catalog
+try:
+    from app.routers import template_catalog_v1 as _template_catalog_v1
+    app.include_router(_template_catalog_v1.router)
+except Exception:
+    pass
+
 # =============================================================================
 # Middleware & state setup
 # =============================================================================
