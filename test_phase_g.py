@@ -14,6 +14,7 @@ from __future__ import annotations
 import sys
 from typing import Any, Dict
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -53,8 +54,7 @@ def test_phase_g():
     print()
 
     if not DB_URL:
-        print("ERROR: DATABASE_URL (DB_URL) is not set")
-        return False
+        pytest.fail("DATABASE_URL (DB_URL) is not set")
 
     # Create engine and session
     engine = create_engine(DB_URL, pool_pre_ping=True, future=True)
@@ -89,17 +89,11 @@ def test_phase_g():
         print(f"  Workflow v2 hash: {hash_v2}")
         print(f"  Workflow v1 (modified metadata) hash: {hash_v1_modified}")
 
-        if hash_v1 != hash_v2:
-            print("  ✓ Different structures have different hashes")
-        else:
-            print("  ✗ FAIL: Different structures should have different hashes")
-            return False
+        assert hash_v1 != hash_v2, "Different structures should have different hashes"
+        print("  ✓ Different structures have different hashes")
 
-        if hash_v1 == hash_v1_modified:
-            print("  ✓ Same structure with different metadata has same hash")
-        else:
-            print("  ✗ FAIL: Same structure should have same hash regardless of metadata")
-            return False
+        assert hash_v1 == hash_v1_modified, "Same structure should have same hash regardless of metadata"
+        print("  ✓ Same structure with different metadata has same hash")
 
         print()
 
@@ -112,25 +106,19 @@ def test_phase_g():
         # Internal change (metadata only)
         compat_internal = determine_compatibility_level(workflow_v1, workflow_v1_modified)
         print(f"  Metadata change: {compat_internal}")
-        if compat_internal != CompatibilityLevel.INTERNAL:
-            print(f"  ✗ FAIL: Expected INTERNAL, got {compat_internal}")
-            return False
+        assert compat_internal == CompatibilityLevel.INTERNAL, f"Expected INTERNAL, got {compat_internal}"
         print("  ✓ Metadata-only changes are INTERNAL")
 
         # Additive change (new step)
         compat_additive = determine_compatibility_level(workflow_v1, workflow_v2)
         print(f"  New step added: {compat_additive}")
-        if compat_additive != CompatibilityLevel.ADDITIVE:
-            print(f"  ✗ FAIL: Expected ADDITIVE, got {compat_additive}")
-            return False
+        assert compat_additive == CompatibilityLevel.ADDITIVE, f"Expected ADDITIVE, got {compat_additive}"
         print("  ✓ New steps are ADDITIVE")
 
         # Breaking change (step removed)
         compat_breaking = determine_compatibility_level(workflow_v2, workflow_v1)
         print(f"  Step removed: {compat_breaking}")
-        if compat_breaking != CompatibilityLevel.BREAKING:
-            print(f"  ✗ FAIL: Expected BREAKING, got {compat_breaking}")
-            return False
+        assert compat_breaking == CompatibilityLevel.BREAKING, f"Expected BREAKING, got {compat_breaking}"
         print("  ✓ Removed steps are BREAKING")
 
         print()
@@ -229,9 +217,7 @@ def test_phase_g():
             allow_draft=False,
         )
 
-        if not result:
-            print("  ✗ FAIL: No version resolved with default rules")
-            return False
+        assert result is not None, (" No version resolved with default rules")
 
         resolved_version, resolution_reason = result
         print(f"  Default resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
@@ -242,7 +228,6 @@ def test_phase_g():
         # Should resolve to 1.2 (latest active non-breaking)
         if resolved_version.version_major != 1 or resolved_version.version_minor != 2:
             print(f"  ✗ FAIL: Expected v1.2, got v{resolved_version.version_major}.{resolved_version.version_minor}")
-            return False
         print("  ✓ Correctly resolved to v1.2 (latest active, non-breaking)")
 
         print()
@@ -257,9 +242,7 @@ def test_phase_g():
             allow_draft=False,
         )
 
-        if not result:
-            print("  ✗ FAIL: No version resolved with allow_breaking=True")
-            return False
+        assert result is not None, (" No version resolved with allow_breaking=True")
 
         resolved_version, resolution_reason = result
         print(f"  Resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
@@ -268,7 +251,6 @@ def test_phase_g():
         # Should resolve to 2.0 (latest active including breaking)
         if resolved_version.version_major != 2 or resolved_version.version_minor != 0:
             print(f"  ✗ FAIL: Expected v2.0, got v{resolved_version.version_major}.{resolved_version.version_minor}")
-            return False
         print("  ✓ Correctly resolved to v2.0 (latest active with breaking)")
 
         print()
@@ -283,9 +265,7 @@ def test_phase_g():
             allow_draft=False,
         )
 
-        if not result:
-            print("  ✗ FAIL: No version resolved with allow_deprecated=True")
-            return False
+        assert result is not None, (" No version resolved with allow_deprecated=True")
 
         resolved_version, resolution_reason = result
         print(f"  Resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
@@ -295,7 +275,6 @@ def test_phase_g():
         # 1.3 is deprecated but newer than 1.2
         if resolved_version.version_major != 1 or resolved_version.version_minor not in [2, 3]:
             print(f"  ✗ FAIL: Expected v1.2 or v1.3, got v{resolved_version.version_major}.{resolved_version.version_minor}")
-            return False
         print(f"  ✓ Correctly resolved to v{resolved_version.version_major}.{resolved_version.version_minor}")
 
         print()
@@ -309,9 +288,7 @@ def test_phase_g():
             version_minor=1,
         )
 
-        if not result:
-            print("  ✗ FAIL: No version resolved for exact request v1.1")
-            return False
+        assert result is not None, (" No version resolved for exact request v1.1")
 
         resolved_version, resolution_reason = result
         print(f"  Resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
@@ -319,7 +296,6 @@ def test_phase_g():
 
         if resolved_version.version_major != 1 or resolved_version.version_minor != 1:
             print(f"  ✗ FAIL: Expected v1.1, got v{resolved_version.version_major}.{resolved_version.version_minor}")
-            return False
         print("  ✓ Correctly resolved exact version v1.1")
 
         print()
@@ -335,9 +311,7 @@ def test_phase_g():
             allow_draft=False,
         )
 
-        if not result:
-            print("  ✗ FAIL: No version resolved for major version 1")
-            return False
+        assert result is not None, (" No version resolved for major version 1")
 
         resolved_version, resolution_reason = result
         print(f"  Resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
@@ -345,7 +319,6 @@ def test_phase_g():
 
         if resolved_version.version_major != 1:
             print(f"  ✗ FAIL: Expected major version 1, got {resolved_version.version_major}")
-            return False
         print(f"  ✓ Correctly resolved to v1.{resolved_version.version_minor} (major version constraint)")
 
         print()
@@ -377,7 +350,6 @@ def test_phase_g():
 
         if len(active_versions) != 3:  # 1.1, 1.2, 2.0
             print(f"  ✗ FAIL: Expected 3 active versions, got {len(active_versions)}")
-            return False
 
         print()
 
@@ -394,9 +366,8 @@ def test_phase_g():
             status=TemplateStatus.ACTIVE,
         )
 
-        if not updated_version or updated_version.status != TemplateStatus.ACTIVE.value:
-            print("  ✗ FAIL: Failed to update version status")
-            return False
+        assert updated_version is not None, "Failed to update version"
+        assert updated_version.status == TemplateStatus.ACTIVE.value, "Failed to update version status to ACTIVE"
 
         print(f"  ✓ Updated version 1.0 from draft to active")
         print()
@@ -412,9 +383,7 @@ def test_phase_g():
             template_key="nonexistent-template",
         )
 
-        if result is not None:
-            print("  ✗ FAIL: Expected None for nonexistent template")
-            return False
+        assert result is None, (" Expected None for nonexistent template")
         print("  ✓ Returns None for nonexistent template")
         print()
 
@@ -431,9 +400,7 @@ def test_phase_g():
             version_minor=99,
         )
 
-        if result is not None:
-            print("  ✗ FAIL: Expected None for nonexistent version 99.99")
-            return False
+        assert result is None, (" Expected None for nonexistent version 99.99")
         print("  ✓ Returns None for nonexistent version 99.99")
         print()
 
@@ -469,9 +436,7 @@ def test_phase_g():
             allow_draft=False,
         )
 
-        if result is not None:
-            print("  ✗ FAIL: Expected None when no active versions available")
-            return False
+        assert result is None, (" Expected None when no active versions available")
         print("  ✓ Returns None when only draft versions exist (allow_draft=False)")
         print()
 
@@ -507,9 +472,7 @@ def test_phase_g():
             allow_breaking=False,
         )
 
-        if result is not None:
-            print("  ✗ FAIL: Expected None when only breaking versions available")
-            return False
+        assert result is None, (" Expected None when only breaking versions available")
         print("  ✓ Returns None when only breaking versions exist (allow_breaking=False)")
         print()
 
@@ -545,9 +508,7 @@ def test_phase_g():
             allow_deprecated=False,
         )
 
-        if result is not None:
-            print("  ✗ FAIL: Expected None when only deprecated versions available")
-            return False
+        assert result is None, (" Expected None when only deprecated versions available")
         print("  ✓ Returns None when only deprecated versions exist (allow_deprecated=False)")
         print()
 
@@ -563,9 +524,7 @@ def test_phase_g():
             allow_draft=True,
         )
 
-        if not result:
-            print("  ✗ FAIL: Expected to resolve when allow_draft=True")
-            return False
+        assert result is not None, (" Expected to resolve when allow_draft=True")
 
         resolved_version, resolution_reason = result
         print(f"  Resolution: v{resolved_version.version_major}.{resolved_version.version_minor}")
@@ -573,7 +532,6 @@ def test_phase_g():
 
         if resolved_version.status != TemplateStatus.DRAFT.value:
             print(f"  ✗ FAIL: Expected draft status, got {resolved_version.status}")
-            return False
         print("  ✓ Correctly resolves draft version when allow_draft=True")
         print()
 
@@ -603,22 +561,10 @@ def test_phase_g():
         print(f"  • Success path: draft allowed when requested: ✓")
         print()
 
-        return True
-
-    except Exception as e:
-        print()
-        print("=" * 80)
-        print(f"✗ Phase G test FAILED with error:")
-        print(f"  {type(e).__name__}: {e}")
-        print("=" * 80)
-        import traceback
-        traceback.print_exc()
-        return False
-
     finally:
         session.close()
 
 
 if __name__ == "__main__":
-    success = test_phase_g()
-    sys.exit(0 if success else 1)
+    # Run with: pytest test_phase_g.py -v
+    pytest.main([__file__, "-v"])

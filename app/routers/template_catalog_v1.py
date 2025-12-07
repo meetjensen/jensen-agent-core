@@ -255,6 +255,14 @@ def get_version(
     session: Session = Depends(get_session),
 ):
     """Get a specific version."""
+    # Check if template exists first
+    template = template_service.get_template_by_key(session, template_key)
+    if not template:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Template '{template_key}' not found",
+        )
+
     version = template_service.get_version(
         session,
         template_key=template_key,
@@ -262,7 +270,10 @@ def get_version(
         version_minor=version_minor,
     )
     if not version:
-        raise HTTPException(status_code=404, detail="Version not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Version {version_major}.{version_minor} not found for template '{template_key}'",
+        )
 
     return VersionResponse(
         id=str(version.id),
@@ -336,6 +347,14 @@ def resolve_version(
             detail="Template key in path and request body must match",
         )
 
+    # Check if template exists first for better error messages
+    template = template_service.get_template_by_key(session, template_key)
+    if not template:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Template '{template_key}' not found",
+        )
+
     result = template_service.resolve_version(
         session,
         template_key=template_key,
@@ -347,10 +366,21 @@ def resolve_version(
     )
 
     if not result:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No suitable version found for template '{template_key}' with given constraints",
-        )
+        # Build specific error message based on constraints
+        if request.version_major is not None and request.version_minor is not None:
+            detail = f"Version {request.version_major}.{request.version_minor} not found for template '{template_key}'"
+        elif request.version_major is not None:
+            detail = f"No suitable version found in major version {request.version_major} for template '{template_key}'"
+        elif not request.allow_breaking and not request.allow_deprecated and not request.allow_draft:
+            detail = (
+                f"No suitable version found for template '{template_key}'. "
+                f"Only active, non-breaking versions are allowed by default. "
+                f"Try setting allow_breaking, allow_deprecated, or allow_draft to true."
+            )
+        else:
+            detail = f"No suitable version found for template '{template_key}' with given constraints"
+
+        raise HTTPException(status_code=404, detail=detail)
 
     version, resolution_reason = result
 
@@ -381,6 +411,14 @@ def resolve_version_get(
 
     This is a convenience endpoint for simple version resolution without a request body.
     """
+    # Check if template exists first for better error messages
+    template = template_service.get_template_by_key(session, template_key)
+    if not template:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Template '{template_key}' not found",
+        )
+
     result = template_service.resolve_version(
         session,
         template_key=template_key,
@@ -392,10 +430,21 @@ def resolve_version_get(
     )
 
     if not result:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No suitable version found for template '{template_key}' with given constraints",
-        )
+        # Build specific error message based on constraints
+        if version_major is not None and version_minor is not None:
+            detail = f"Version {version_major}.{version_minor} not found for template '{template_key}'"
+        elif version_major is not None:
+            detail = f"No suitable version found in major version {version_major} for template '{template_key}'"
+        elif not allow_breaking and not allow_deprecated and not allow_draft:
+            detail = (
+                f"No suitable version found for template '{template_key}'. "
+                f"Only active, non-breaking versions are allowed by default. "
+                f"Try setting allow_breaking, allow_deprecated, or allow_draft to true."
+            )
+        else:
+            detail = f"No suitable version found for template '{template_key}' with given constraints"
+
+        raise HTTPException(status_code=404, detail=detail)
 
     version, resolution_reason = result
 
