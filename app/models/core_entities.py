@@ -10,6 +10,7 @@ from sqlalchemy import (
     Boolean,
     ForeignKey,
     text,
+    UniqueConstraint,
 )
 from sqlalchemy.types import JSON, TypeDecorator, CHAR
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
@@ -64,6 +65,106 @@ try:
     from app._db import Base  # type: ignore[attr-defined]
 except Exception:  # noqa: BLE001
     Base = declarative_base()  # type: ignore[assignment]
+
+
+# ============================================================================
+# Phase G: Template Catalog Models
+# ============================================================================
+
+
+class WorkflowTemplate(Base):
+    """
+    Phase G: Workflow template container.
+
+    A template is a versioned workflow definition identified by a unique key.
+    Each template can have multiple versions with different compatibility levels.
+    """
+    __tablename__ = "workflow_templates"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    template_key = Column(Text, nullable=False, unique=True)
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    owner = Column(Text, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    # Relationships
+    versions = relationship(
+        "WorkflowTemplateVersion",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class WorkflowTemplateVersion(Base):
+    """
+    Phase G: Versioned workflow definition.
+
+    Each version has a major.minor version number and a compatibility level
+    (breaking, additive, internal) determined by comparing with previous versions.
+    """
+    __tablename__ = "workflow_template_versions"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+    template_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workflow_templates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version_major = Column(Integer, nullable=False)
+    version_minor = Column(Integer, nullable=False)
+    definition = Column(JSONB, nullable=False)
+    status = Column(Text, nullable=False)  # 'active', 'deprecated', 'draft'
+    compatibility_level = Column(Text, nullable=False)  # 'breaking', 'additive', 'internal', 'unknown'
+    structural_hash = Column(Text, nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    # Unique constraint on template_id + version_major + version_minor
+    __table_args__ = (
+        UniqueConstraint(
+            "template_id",
+            "version_major",
+            "version_minor",
+            name="uq_template_version",
+        ),
+    )
+
+    # Relationships
+    template = relationship("WorkflowTemplate", back_populates="versions")
+
+
+# ============================================================================
+# Phase G.1: Core Entities Models
+# ============================================================================
 
 
 class Tenant(Base):
