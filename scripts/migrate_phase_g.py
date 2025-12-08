@@ -2,29 +2,7 @@
 """
 Phase G Migration Script
 
-Creates Phase G Template Catalog tables:
-- workflow_templates
-- workflow_template_versions
-
-EXECUTION ORDER: Run FIRST (no dependencies)
-IDEMPOTENT: Safe to run multiple times (uses checkfirst=True)
-
-Usage:
-    python scripts/migrate_phase_g.py
-
-Or in Docker container:
-    docker exec jensen-agent python scripts/migrate_phase_g.py
-
-Dependencies:
-    - PostgreSQL database with DATABASE_URL configured
-    - No dependent tables required
-
-Created tables:
-    1. workflow_templates - Stores template metadata (key, name, owner, etc.)
-    2. workflow_template_versions - Stores versioned workflow definitions
-
-Related migrations:
-    - migrate_phase_g1.py - Creates tenant/workspace/runs/tasks schema (independent)
+Adds workflow_templates and workflow_template_versions tables to the database.
 """
 from __future__ import annotations
 

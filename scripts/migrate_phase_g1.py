@@ -2,36 +2,12 @@
 """
 Phase G.1 Migration - Core Entities Schema
 
-Creates Phase G.1 core orchestration tables:
+This migration creates the Phase G core entities tables:
 - tenants
 - workspaces
 - runs
 - tasks
 - agent_events
-
-EXECUTION ORDER: Run SECOND (after migrate_phase_g.py, though no strict dependency)
-IDEMPOTENT: Safe to run multiple times (uses CREATE IF NOT EXISTS)
-
-Usage:
-    python scripts/migrate_phase_g1.py
-
-Or in Docker container:
-    docker exec jensen-agent python scripts/migrate_phase_g1.py
-
-Dependencies:
-    - PostgreSQL database with DATABASE_URL configured
-    - uuid-ossp extension (auto-enabled by this script)
-    - No dependency on Phase G tables (workflow_templates/workflow_template_versions)
-
-Created tables:
-    1. tenants - Multi-tenancy support
-    2. workspaces - Tenant-scoped workspace configuration
-    3. runs - Workflow execution runs
-    4. tasks - Individual tasks within runs
-    5. agent_events - Audit trail for agent actions
-
-Related migrations:
-    - migrate_phase_g.py - Creates template catalog schema (independent)
 
 Run this script to apply the migration to your database.
 """

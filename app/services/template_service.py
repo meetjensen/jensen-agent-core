@@ -5,7 +5,6 @@ Provides CRUD operations and version resolution logic for workflow templates.
 """
 from __future__ import annotations
 
-import logging
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
@@ -19,9 +18,6 @@ from app.workflows.compatibility import (
     compute_structural_hash,
     determine_compatibility_level,
 )
-
-
-logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -283,20 +279,6 @@ def resolve_version(
     """
     template = get_template_by_key(session, template_key)
     if not template:
-        logger.warning(
-            "Version resolution failed: template not found",
-            extra={
-                "template_key": template_key,
-                "reason": "template_not_found",
-                "constraints": {
-                    "version_major": version_major,
-                    "version_minor": version_minor,
-                    "allow_breaking": allow_breaking,
-                    "allow_deprecated": allow_deprecated,
-                    "allow_draft": allow_draft,
-                },
-            },
-        )
         return None
 
     # Build query
@@ -315,41 +297,7 @@ def resolve_version(
         )
         version = query.first()
         if version:
-            logger.info(
-                "Version resolved (exact match)",
-                extra={
-                    "template_key": template_key,
-                    "resolved_version": f"{version.version_major}.{version.version_minor}",
-                    "version_id": str(version.id),
-                    "status": version.status,
-                    "compatibility_level": version.compatibility_level,
-                    "resolution_reason": f"Exact version {version_major}.{version_minor} requested",
-                    "constraints": {
-                        "version_major": version_major,
-                        "version_minor": version_minor,
-                        "allow_breaking": allow_breaking,
-                        "allow_deprecated": allow_deprecated,
-                        "allow_draft": allow_draft,
-                    },
-                },
-            )
             return version, f"Exact version {version_major}.{version_minor} requested"
-
-        logger.warning(
-            "Version resolution failed: exact version not found",
-            extra={
-                "template_key": template_key,
-                "reason": "version_not_found",
-                "requested_version": f"{version_major}.{version_minor}",
-                "constraints": {
-                    "version_major": version_major,
-                    "version_minor": version_minor,
-                    "allow_breaking": allow_breaking,
-                    "allow_deprecated": allow_deprecated,
-                    "allow_draft": allow_draft,
-                },
-            },
-        )
         return None
 
     if version_major is not None:
@@ -399,20 +347,6 @@ def resolve_version(
     version = query.first()
 
     if not version:
-        logger.warning(
-            "Version resolution failed: no matching versions",
-            extra={
-                "template_key": template_key,
-                "reason": "no_matching_versions",
-                "constraints": {
-                    "version_major": version_major,
-                    "version_minor": version_minor,
-                    "allow_breaking": allow_breaking,
-                    "allow_deprecated": allow_deprecated,
-                    "allow_draft": allow_draft,
-                },
-            },
-        )
         return None
 
     # Build resolution reason
@@ -424,24 +358,5 @@ def resolve_version(
         reason_parts.append(f"major_constraint={version_major}")
 
     resolution_reason = ", ".join(reason_parts)
-
-    logger.info(
-        "Version resolved successfully",
-        extra={
-            "template_key": template_key,
-            "resolved_version": f"{version.version_major}.{version.version_minor}",
-            "version_id": str(version.id),
-            "status": version.status,
-            "compatibility_level": version.compatibility_level,
-            "resolution_reason": resolution_reason,
-            "constraints": {
-                "version_major": version_major,
-                "version_minor": version_minor,
-                "allow_breaking": allow_breaking,
-                "allow_deprecated": allow_deprecated,
-                "allow_draft": allow_draft,
-            },
-        },
-    )
 
     return version, resolution_reason
