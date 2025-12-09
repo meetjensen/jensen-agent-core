@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app._db import DB_URL
@@ -34,6 +34,19 @@ def setup_database():
     Base.metadata.create_all(engine, checkfirst=True)
     yield
     # Don't drop tables - let them persist for inspection
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup_database(setup_database):
+    """Truncate workflow tables before running the test suite."""
+    if not DB_URL:
+        pytest.skip("DATABASE_URL not configured")
+
+    engine = create_engine(DB_URL, pool_pre_ping=True, future=True)
+    with engine.connect() as conn:
+        conn.execute(text("TRUNCATE workflow_templates, workflow_template_versions CASCADE"))
+        conn.commit()
+    yield
 
 
 def test_create_template(test_client, setup_database):
@@ -103,7 +116,6 @@ def test_get_nonexistent_template(test_client, setup_database):
     response = test_client.get("/internal/templates/does-not-exist")
 
     assert response.status_code == 404
-    assert response.status_code == 404  # Template not found
 
 
 def test_create_version_1_0(test_client, setup_database):
@@ -300,7 +312,6 @@ def test_get_nonexistent_version(test_client, setup_database):
     response = test_client.get("/internal/templates/test-e2e-workflow/versions/99.99")
 
     assert response.status_code == 404
-    assert response.status_code == 404  # Template not found
 
 
 def test_resolve_version_default(test_client, setup_database):
@@ -389,7 +400,6 @@ def test_resolve_nonexistent_template(test_client, setup_database):
     response = test_client.get("/internal/templates/does-not-exist/resolve")
 
     assert response.status_code == 404
-    assert response.status_code == 404  # Template not found
 
 
 def test_resolve_no_matching_versions(test_client, setup_database):
