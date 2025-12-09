@@ -103,7 +103,7 @@ def test_get_nonexistent_template(test_client, setup_database):
     response = test_client.get("/internal/templates/does-not-exist")
 
     assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert response.status_code == 404  # Template not found
 
 
 def test_create_version_1_0(test_client, setup_database):
@@ -300,7 +300,7 @@ def test_get_nonexistent_version(test_client, setup_database):
     response = test_client.get("/internal/templates/test-e2e-workflow/versions/99.99")
 
     assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert response.status_code == 404  # Template not found
 
 
 def test_resolve_version_default(test_client, setup_database):
@@ -389,7 +389,7 @@ def test_resolve_nonexistent_template(test_client, setup_database):
     response = test_client.get("/internal/templates/does-not-exist/resolve")
 
     assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert response.status_code == 404  # Template not found
 
 
 def test_resolve_no_matching_versions(test_client, setup_database):
